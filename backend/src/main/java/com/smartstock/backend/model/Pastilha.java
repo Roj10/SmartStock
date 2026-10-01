@@ -34,6 +34,8 @@ public class Pastilha {
     @Column(nullable = false)
     private Integer quantidadeAtual = 0;
 
+    private String imagemUrl;
+
     public Long getId() {
         return id;
     }
@@ -80,6 +82,14 @@ public class Pastilha {
 
     public void setQuantidadeAtual(Integer quantidadeAtual) {
         this.quantidadeAtual = quantidadeAtual;
+    }
+
+    public String getImagemUrl() {
+        return imagemUrl;
+    }
+
+    public void setImagemUrl(String imagemUrl) {
+        this.imagemUrl = imagemUrl;
     }
 
     public boolean isAbaixoDoMinimo() {

@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';
 
+const API_ORIGIN = 'http://localhost:8080';
 const EMPTY_FORM = { codigo: '', descricao: '', fabricanteId: '', estoqueMinimo: 0, quantidadeAtual: 0 };
+const PALAVRAS_GALERIA = ['imagem', 'imagens'];
+
+function urlImagem(imagemUrl) {
+  return imagemUrl ? `${API_ORIGIN}${imagemUrl}` : null;
+}
 
 export default function Pastilhas() {
   const [lista, setLista] = useState([]);
@@ -12,9 +18,13 @@ export default function Pastilhas() {
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [arquivoImagem, setArquivoImagem] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [formError, setFormError] = useState('');
   const [filtro, setFiltro] = useState('');
+  const [destacado, setDestacado] = useState(null);
+
+  const linhasRef = useRef(new Map());
 
   function carregar() {
     setLoading(true);
@@ -32,6 +42,7 @@ export default function Pastilhas() {
   function abrirNovo() {
     setEditando(null);
     setForm(EMPTY_FORM);
+    setArquivoImagem(null);
     setFormError('');
     setModalAberto(true);
   }
@@ -45,6 +56,7 @@ export default function Pastilhas() {
       estoqueMinimo: p.estoqueMinimo,
       quantidadeAtual: p.quantidadeAtual,
     });
+    setArquivoImagem(null);
     setFormError('');
     setModalAberto(true);
   }
@@ -60,17 +72,37 @@ export default function Pastilhas() {
       quantidadeAtual: Number(form.quantidadeAtual),
     };
     try {
+      let pastilhaId = editando?.id;
       if (editando) {
         await api.put(`/pastilhas/${editando.id}`, payload);
       } else {
-        await api.post('/pastilhas', payload);
+        const { data } = await api.post('/pastilhas', payload);
+        pastilhaId = data.id;
       }
+
+      if (arquivoImagem) {
+        const dadosImagem = new FormData();
+        dadosImagem.append('arquivo', arquivoImagem);
+        await api.post(`/pastilhas/${pastilhaId}/imagem`, dadosImagem);
+      }
+
       setModalAberto(false);
       carregar();
     } catch (err) {
       setFormError(err.response?.data?.message ?? 'Erro ao salvar pastilha.');
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function removerImagem() {
+    if (!editando || !window.confirm('Remover a imagem desta pastilha?')) return;
+    try {
+      await api.delete(`/pastilhas/${editando.id}/imagem`);
+      setEditando({ ...editando, imagemUrl: null });
+      carregar();
+    } catch {
+      alert('Não foi possível remover a imagem.');
     }
   }
 
@@ -84,11 +116,26 @@ export default function Pastilhas() {
     }
   }
 
-  const listaFiltrada = lista.filter((p) => {
-    const termo = filtro.trim().toLowerCase();
-    if (!termo) return true;
-    return p.codigo.toLowerCase().includes(termo) || p.descricao.toLowerCase().includes(termo);
-  });
+  const termo = filtro.trim().toLowerCase();
+  const modoGaleria = PALAVRAS_GALERIA.includes(termo);
+
+  const listaFiltrada = useMemo(() => {
+    if (!termo || modoGaleria) return lista;
+    return lista.filter(
+      (p) => p.codigo.toLowerCase().includes(termo) || p.descricao.toLowerCase().includes(termo)
+    );
+  }, [lista, termo, modoGaleria]);
+
+  const pastilhasComImagem = useMemo(() => lista.filter((p) => p.imagemUrl), [lista]);
+
+  function irParaProduto(id) {
+    const linha = linhasRef.current.get(id);
+    if (linha) {
+      linha.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setDestacado(id);
+    setTimeout(() => setDestacado((atual) => (atual === id ? null : atual)), 2000);
+  }
 
   return (
     <div>
@@ -107,10 +154,25 @@ export default function Pastilhas() {
       <section className="panel">
         <input
           className="search-input"
-          placeholder="Buscar por código ou descrição..."
+          placeholder="Buscar por código, descrição, ou digite 'imagem' para ver a galeria..."
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
         />
+
+        {modoGaleria && (
+          <div className="galeria-imagens">
+            {pastilhasComImagem.length === 0 ? (
+              <p className="empty-state">Nenhuma pastilha com imagem cadastrada ainda.</p>
+            ) : (
+              pastilhasComImagem.map((p) => (
+                <button key={p.id} type="button" className="galeria-item" onClick={() => irParaProduto(p.id)}>
+                  <img src={urlImagem(p.imagemUrl)} alt={p.codigo} />
+                  <span>{p.codigo}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
 
         {loading ? (
           <p className="empty-state">Carregando...</p>
@@ -121,6 +183,7 @@ export default function Pastilhas() {
             <table className="table">
               <thead>
                 <tr>
+                  <th>Imagem</th>
                   <th>Código</th>
                   <th>Descrição</th>
                   <th>Fabricante</th>
@@ -132,7 +195,21 @@ export default function Pastilhas() {
               </thead>
               <tbody>
                 {listaFiltrada.map((p) => (
-                  <tr key={p.id}>
+                  <tr
+                    key={p.id}
+                    ref={(el) => {
+                      if (el) linhasRef.current.set(p.id, el);
+                      else linhasRef.current.delete(p.id);
+                    }}
+                    className={destacado === p.id ? 'row-highlight' : ''}
+                  >
+                    <td>
+                      {p.imagemUrl ? (
+                        <img className="thumb" src={urlImagem(p.imagemUrl)} alt={p.codigo} />
+                      ) : (
+                        <span className="thumb thumb-placeholder">—</span>
+                      )}
+                    </td>
                     <td>{p.codigo}</td>
                     <td>{p.descricao}</td>
                     <td>{p.fabricante?.nome ?? '-'}</td>
@@ -221,6 +298,23 @@ export default function Pastilhas() {
               <p className="form-hint">
                 Para pastilhas novas, use as telas de Movimentações para registrar a entrada inicial de estoque.
               </p>
+            )}
+
+            <label>
+              Imagem do produto
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={(e) => setArquivoImagem(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            {editando?.imagemUrl && !arquivoImagem && (
+              <div className="imagem-atual">
+                <img src={urlImagem(editando.imagemUrl)} alt={editando.codigo} />
+                <button type="button" className="btn-link btn-link-danger" onClick={removerImagem}>
+                  Remover imagem atual
+                </button>
+              </div>
             )}
 
             {formError && <div className="alert alert-error">{formError}</div>}

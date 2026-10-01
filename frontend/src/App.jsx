@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Pastilhas from './pages/Pastilhas';
 import Fornecedores from './pages/Fornecedores';
 import Movimentacoes from './pages/Movimentacoes';
+import Usuarios from './pages/Usuarios';
 
 export default function App() {
   return (
@@ -20,9 +21,38 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="pastilhas" element={<Pastilhas />} />
-        <Route path="fornecedores" element={<Fornecedores />} />
-        <Route path="movimentacoes" element={<Movimentacoes />} />
+        <Route
+          path="pastilhas"
+          element={
+            <ProtectedRoute permissao="PASTILHAS">
+              <Pastilhas />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="fornecedores"
+          element={
+            <ProtectedRoute permissao="FORNECEDORES">
+              <Fornecedores />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="movimentacoes"
+          element={
+            <ProtectedRoute permissao="MOVIMENTACOES">
+              <Movimentacoes />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="usuarios"
+          element={
+            <ProtectedRoute permissao="USUARIOS">
+              <Usuarios />
+            </ProtectedRoute>
+          }
+        />
       </Route>
     </Routes>
   );

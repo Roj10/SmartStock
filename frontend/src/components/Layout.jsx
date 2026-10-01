@@ -2,20 +2,23 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Painel', icon: '▦', end: true },
-  { to: '/pastilhas', label: 'Pastilhas', icon: '●' },
-  { to: '/movimentacoes', label: 'Movimentações', icon: '⇆' },
-  { to: '/fornecedores', label: 'Fornecedores', icon: '⚑' },
+  { to: '/', label: 'Painel', icon: '▦', end: true, permissao: null },
+  { to: '/pastilhas', label: 'Pastilhas', icon: '●', permissao: 'PASTILHAS' },
+  { to: '/movimentacoes', label: 'Movimentações', icon: '⇆', permissao: 'MOVIMENTACOES' },
+  { to: '/fornecedores', label: 'Fornecedores', icon: '⚑', permissao: 'FORNECEDORES' },
+  { to: '/usuarios', label: 'Usuários', icon: '👤', permissao: 'USUARIOS' },
 ];
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermissao } = useAuth();
   const navigate = useNavigate();
 
   function handleLogout() {
     logout();
     navigate('/login');
   }
+
+  const itensVisiveis = NAV_ITEMS.filter((item) => !item.permissao || hasPermissao(item.permissao));
 
   return (
     <div className="app-shell">
@@ -29,7 +32,7 @@ export default function Layout() {
         </div>
 
         <nav className="nav">
-          {NAV_ITEMS.map((item) => (
+          {itensVisiveis.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

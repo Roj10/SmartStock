@@ -25,12 +25,14 @@ A API sobe em `http://localhost:8080`. O banco H2 é em memória e é recriado (
 
 Usuários de demonstração (criados automaticamente):
 
-| Usuário  | Senha        | Perfil   |
-|----------|--------------|----------|
-| admin    | admin123     | ADMIN    |
-| operador | operador123  | OPERADOR |
+| Usuário  | Senha        | Perfil        | Acesso                                   |
+|----------|--------------|---------------|-------------------------------------------|
+| admin    | admin123     | ADMIN         | Todas as abas, incluindo Usuários         |
+| operador | operador123  | Funcionário   | Apenas Pastilhas (estoque) e Movimentações (produção) |
 
 Console do H2 (opcional, para inspecionar o banco): `http://localhost:8080/h2-console` — JDBC URL `jdbc:h2:mem:smartstock`, usuário `sa`, senha em branco.
+
+Imagens enviadas pelas telas de Pastilhas são salvas em `backend/uploads/` (fora do controle de versão — ver `.gitignore`).
 
 ## Rodando o frontend
 
@@ -45,12 +47,18 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
 ## Funcionalidades implementadas
 
 - Login com autenticação JWT.
-- Cadastro de pastilhas (código, descrição, fabricante, estoque mínimo).
+- Controle de acesso por usuário: um ADMIN pode cadastrar outras contas e definir exatamente a quais abas cada
+  uma tem acesso (Pastilhas/Estoque, Movimentações/Produção, Fornecedores, Usuários). Contas sem a permissão de
+  um módulo recebem 403 da API e nem veem o item no menu. Apenas ADMIN (ou quem tiver a permissão "Usuários")
+  acessa a tela de gerenciamento de contas; senhas ficam sempre criptografadas (nunca são exibidas, só redefinidas).
+- Cadastro de pastilhas (código, descrição, fabricante, estoque mínimo, imagem do produto).
+- Upload de imagem por pastilha, com galeria de busca: digitar "imagem" ou "imagens" no campo de busca da aba
+  Pastilhas mostra todas as fotos cadastradas, e clicar em uma rola a tela até o produto correspondente na tabela.
 - Cadastro de fabricantes/fornecedores.
 - Registro de entrada e saída de estoque, com validação de estoque insuficiente.
 - Consulta de estoque em tempo real e alertas de estoque abaixo do mínimo.
 - Histórico de movimentações.
-- Painel (dashboard) com indicadores gerais.
+- Painel (dashboard) com indicadores gerais, adaptado às permissões de quem está logado.
 
 ## Próximos passos sugeridos
 

@@ -12,7 +12,12 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (username, senha) => {
     const { data } = await api.post('/auth/login', { username, senha });
     localStorage.setItem('smartstock_token', data.token);
-    const userData = { username: data.username, nome: data.nome, role: data.role };
+    const userData = {
+      username: data.username,
+      nome: data.nome,
+      role: data.role,
+      permissoes: data.permissoes ?? [],
+    };
     localStorage.setItem('smartstock_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
@@ -24,8 +29,15 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const isAdmin = user?.role === 'ADMIN';
+
+  const hasPermissao = useCallback(
+    (modulo) => isAdmin || !!user?.permissoes?.includes(modulo),
+    [user, isAdmin]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isAdmin, hasPermissao }}>
       {children}
     </AuthContext.Provider>
   );

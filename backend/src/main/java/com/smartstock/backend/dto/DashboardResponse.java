@@ -7,14 +7,22 @@ import com.smartstock.backend.model.Pastilha;
 
 public class DashboardResponse {
 
-    private long totalPastilhas;
-    private long totalFornecedores;
-    private long itensAbaixoDoMinimo;
+    private boolean podeVerPastilhas;
+    private boolean podeVerFornecedores;
+    private boolean podeVerMovimentacoes;
+
+    private Long totalPastilhas;
+    private Long totalFornecedores;
+    private Long itensAbaixoDoMinimo;
     private List<Pastilha> alertas;
     private List<Movimentacao> ultimasMovimentacoes;
 
-    public DashboardResponse(long totalPastilhas, long totalFornecedores, long itensAbaixoDoMinimo,
+    public DashboardResponse(boolean podeVerPastilhas, boolean podeVerFornecedores, boolean podeVerMovimentacoes,
+            Long totalPastilhas, Long totalFornecedores, Long itensAbaixoDoMinimo,
             List<Pastilha> alertas, List<Movimentacao> ultimasMovimentacoes) {
+        this.podeVerPastilhas = podeVerPastilhas;
+        this.podeVerFornecedores = podeVerFornecedores;
+        this.podeVerMovimentacoes = podeVerMovimentacoes;
         this.totalPastilhas = totalPastilhas;
         this.totalFornecedores = totalFornecedores;
         this.itensAbaixoDoMinimo = itensAbaixoDoMinimo;
@@ -22,15 +30,27 @@ public class DashboardResponse {
         this.ultimasMovimentacoes = ultimasMovimentacoes;
     }
 
-    public long getTotalPastilhas() {
+    public boolean isPodeVerPastilhas() {
+        return podeVerPastilhas;
+    }
+
+    public boolean isPodeVerFornecedores() {
+        return podeVerFornecedores;
+    }
+
+    public boolean isPodeVerMovimentacoes() {
+        return podeVerMovimentacoes;
+    }
+
+    public Long getTotalPastilhas() {
         return totalPastilhas;
     }
 
-    public long getTotalFornecedores() {
+    public Long getTotalFornecedores() {
         return totalFornecedores;
     }
 
-    public long getItensAbaixoDoMinimo() {
+    public Long getItensAbaixoDoMinimo() {
         return itensAbaixoDoMinimo;
     }
 

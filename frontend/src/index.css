@@ -12,6 +12,10 @@
   --warning-bg: #fdf1de;
   --danger: #c62828;
   --danger-bg: #fdeaea;
+  --info: #1f4e79;
+  --info-bg: #e8f0f7;
+  --neutral: #52606d;
+  --neutral-bg: #eef1f4;
   --radius: 10px;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
   color-scheme: light;
@@ -309,6 +313,101 @@ h1, h2, h3 {
   font-weight: 600;
 }
 
+.text-muted {
+  color: var(--text-muted);
+}
+
+@keyframes row-highlight-fade {
+  from {
+    background: #fff4cc;
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.row-highlight {
+  animation: row-highlight-fade 2s ease-out;
+}
+
+/* ---------- Thumbnails & image gallery ---------- */
+
+.thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+  border: 1px solid var(--border);
+}
+
+.thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: var(--bg);
+}
+
+.galeria-imagens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 16px 0 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.galeria-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 96px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+  font-family: inherit;
+}
+
+.galeria-item:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.galeria-item img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.galeria-item span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  word-break: break-all;
+}
+
+.imagem-atual {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: -6px;
+}
+
+.imagem-atual img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
 .empty-state {
   color: var(--text-muted);
   padding: 20px 0;
@@ -344,6 +443,17 @@ h1, h2, h3 {
 .badge-danger {
   background: var(--danger-bg);
   color: var(--danger);
+}
+
+.badge-neutral {
+  background: var(--neutral-bg);
+  color: var(--neutral);
+}
+
+.permissao-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 /* ---------- Buttons ---------- */
@@ -478,6 +588,38 @@ h1, h2, h3 {
   margin: -6px 0 0;
 }
 
+.permissoes-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.permissoes-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.checkbox-row {
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400 !important;
+  font-size: 13px;
+}
+
+.checkbox-row input {
+  width: 16px;
+  height: 16px;
+}
+
 .search-input {
   width: 100%;
   max-width: 320px;
@@ -494,11 +636,39 @@ h1, h2, h3 {
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 13px;
+  margin-bottom: 16px;
 }
 
 .alert-error {
   background: var(--danger-bg);
   color: var(--danger);
+}
+
+.alert-info {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+/* ---------- Access denied ---------- */
+
+.access-denied {
+  max-width: 480px;
+  margin: 60px auto;
+  text-align: center;
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.access-denied h1 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.access-denied p {
+  color: var(--text-muted);
 }
 
 /* ---------- Modal ---------- */

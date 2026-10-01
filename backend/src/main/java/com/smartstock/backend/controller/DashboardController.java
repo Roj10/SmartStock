@@ -1,5 +1,6 @@
 package com.smartstock.backend.controller;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,7 +19,7 @@ public class DashboardController {
     }
 
     @GetMapping
-    public DashboardResponse dashboard() {
-        return dashboardService.gerar();
+    public DashboardResponse dashboard(Authentication authentication) {
+        return dashboardService.gerar(authentication);
     }
 }

@@ -2,6 +2,7 @@ package com.smartstock.backend.controller;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +20,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/fornecedores")
+@PreAuthorize("hasAuthority('PERM_FORNECEDORES') or hasAuthority('PERM_PASTILHAS') or hasAuthority('PERM_MOVIMENTACOES')")
 public class FornecedorController {
 
     private final FornecedorService fornecedorService;
@@ -38,16 +40,19 @@ public class FornecedorController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_FORNECEDORES')")
     public Fornecedor criar(@Valid @RequestBody FornecedorRequest request) {
         return fornecedorService.criar(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_FORNECEDORES')")
     public Fornecedor atualizar(@PathVariable Long id, @Valid @RequestBody FornecedorRequest request) {
         return fornecedorService.atualizar(id, request);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_FORNECEDORES')")
     public void excluir(@PathVariable Long id) {
         fornecedorService.excluir(id);
     }

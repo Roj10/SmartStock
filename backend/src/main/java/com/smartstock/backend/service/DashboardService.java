@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.smartstock.backend.dto.DashboardResponse;
@@ -27,15 +29,34 @@ public class DashboardService {
         this.movimentacaoRepository = movimentacaoRepository;
     }
 
-    public DashboardResponse gerar() {
-        List<Pastilha> alertas = pastilhaRepository.findAlertasEstoqueMinimo();
-        long totalPastilhas = pastilhaRepository.count();
-        long totalFornecedores = fornecedorRepository.count();
+    public DashboardResponse gerar(Authentication authentication) {
+        boolean podeVerPastilhas = possui(authentication, "PERM_PASTILHAS");
+        boolean podeVerFornecedores = possui(authentication, "PERM_FORNECEDORES");
+        boolean podeVerMovimentacoes = possui(authentication, "PERM_MOVIMENTACOES");
 
-        List<Movimentacao> ultimas = movimentacaoRepository
-                .findAll(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "dataHora")))
-                .getContent();
+        Long totalPastilhas = null;
+        Long itensAbaixoDoMinimo = null;
+        List<Pastilha> alertas = null;
+        if (podeVerPastilhas) {
+            alertas = pastilhaRepository.findAlertasEstoqueMinimo();
+            totalPastilhas = pastilhaRepository.count();
+            itensAbaixoDoMinimo = (long) alertas.size();
+        }
 
-        return new DashboardResponse(totalPastilhas, totalFornecedores, alertas.size(), alertas, ultimas);
+        Long totalFornecedores = podeVerFornecedores ? fornecedorRepository.count() : null;
+
+        List<Movimentacao> ultimas = null;
+        if (podeVerMovimentacoes) {
+            ultimas = movimentacaoRepository
+                    .findAll(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "dataHora")))
+                    .getContent();
+        }
+
+        return new DashboardResponse(podeVerPastilhas, podeVerFornecedores, podeVerMovimentacoes,
+                totalPastilhas, totalFornecedores, itensAbaixoDoMinimo, alertas, ultimas);
+    }
+
+    private boolean possui(Authentication authentication, String autoridade) {
+        return authentication.getAuthorities().contains(new SimpleGrantedAuthority(autoridade));
     }
 }
