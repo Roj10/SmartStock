@@ -5,6 +5,8 @@ const NAV_ITEMS = [
   { to: '/', label: 'Painel', icon: '▦', end: true, permissao: null },
   { to: '/pastilhas', label: 'Pastilhas', icon: '●', permissao: 'PASTILHAS' },
   { to: '/movimentacoes', label: 'Movimentações', icon: '⇆', permissao: 'MOVIMENTACOES' },
+  { to: '/progresso', label: 'Progresso', icon: '◧', permissao: 'PROJETOS' },
+  { to: '/calendario', label: 'Calendário', icon: '◱', permissao: 'PROJETOS' },
   { to: '/fornecedores', label: 'Fornecedores', icon: '⚑', permissao: 'FORNECEDORES' },
   { to: '/usuarios', label: 'Usuários', icon: '👤', permissao: 'USUARIOS' },
 ];

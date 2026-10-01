@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 import javax.imageio.ImageIO;
@@ -18,14 +21,19 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import com.smartstock.backend.model.ChecklistItem;
 import com.smartstock.backend.model.Fornecedor;
 import com.smartstock.backend.model.Modulo;
 import com.smartstock.backend.model.Pastilha;
+import com.smartstock.backend.model.Projeto;
+import com.smartstock.backend.model.ProjetoMaterial;
 import com.smartstock.backend.model.Role;
+import com.smartstock.backend.model.StatusProjeto;
 import com.smartstock.backend.model.TipoFornecedor;
 import com.smartstock.backend.model.Usuario;
 import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
+import com.smartstock.backend.repository.ProjetoRepository;
 import com.smartstock.backend.repository.UsuarioRepository;
 
 @Component
@@ -34,16 +42,19 @@ public class DataSeeder implements CommandLineRunner {
     private final UsuarioRepository usuarioRepository;
     private final FornecedorRepository fornecedorRepository;
     private final PastilhaRepository pastilhaRepository;
+    private final ProjetoRepository projetoRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.uploads.dir}")
     private String uploadsDir;
 
     public DataSeeder(UsuarioRepository usuarioRepository, FornecedorRepository fornecedorRepository,
-            PastilhaRepository pastilhaRepository, PasswordEncoder passwordEncoder) {
+            PastilhaRepository pastilhaRepository, ProjetoRepository projetoRepository,
+            PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.pastilhaRepository = pastilhaRepository;
+        this.projetoRepository = projetoRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -52,6 +63,7 @@ public class DataSeeder implements CommandLineRunner {
         seedUsuarios();
         seedFornecedores();
         seedPastilhas();
+        seedProjetos();
     }
 
     private void seedUsuarios() {
@@ -67,14 +79,14 @@ public class DataSeeder implements CommandLineRunner {
         admin.setPermissoes(Set.of(Modulo.values()));
         usuarioRepository.save(admin);
 
-        // Exemplo de conta com acesso restrito a estoque e movimentações (produção),
-        // sem acesso a Fornecedores nem à administração de Usuários.
+        // Exemplo de conta com acesso restrito a estoque, movimentações e progresso
+        // de produção, sem acesso a Fornecedores nem à administração de Usuários.
         Usuario operador = new Usuario();
         operador.setNome("Operador de Estoque");
         operador.setUsername("operador");
         operador.setSenha(passwordEncoder.encode("operador123"));
         operador.setRole(Role.OPERADOR);
-        operador.setPermissoes(Set.of(Modulo.PASTILHAS, Modulo.MOVIMENTACOES));
+        operador.setPermissoes(Set.of(Modulo.PASTILHAS, Modulo.MOVIMENTACOES, Modulo.PROJETOS));
         usuarioRepository.save(operador);
     }
 
@@ -141,6 +153,87 @@ public class DataSeeder implements CommandLineRunner {
         p3.setEstoqueMinimo(10);
         p3.setQuantidadeAtual(10);
         pastilhaRepository.save(p3);
+    }
+
+    private void seedProjetos() {
+        if (projetoRepository.count() > 0) {
+            return;
+        }
+
+        List<Pastilha> pastilhas = pastilhaRepository.findAll();
+        Pastilha cnmg = pastilhas.get(0);
+        Pastilha apmt = pastilhas.get(1);
+
+        // Exemplo citado pelo usuário: projeto de cerca de metal, em produção,
+        // com parte do checklist já concluída.
+        Projeto cercaMetal = new Projeto();
+        cercaMetal.setNome("Cerca de metal - Cliente ABC");
+        cercaMetal.setDescricao("Cerca de metal sob medida para o pátio do cliente.");
+        cercaMetal.setStatus(StatusProjeto.EM_PRODUCAO);
+        cercaMetal.setDataCriacao(LocalDateTime.now().minusDays(3));
+        cercaMetal.setDataInicioProducao(LocalDateTime.now().minusDays(2));
+        adicionarMaterial(cercaMetal, cnmg, 10);
+        adicionarChecklist(cercaMetal,
+                new String[] { "Separar as pastilhas e materiais da lista", "Fazer o ligamento (solda) das peças",
+                        "Fazer as rodas", "Pintura", "Finalização e conferência" },
+                2);
+        projetoRepository.save(cercaMetal);
+
+        Projeto suporteIndustrial = new Projeto();
+        suporteIndustrial.setNome("Suporte industrial - Cliente XYZ");
+        suporteIndustrial.setDescricao("Suporte metálico para fixação de equipamento.");
+        suporteIndustrial.setStatus(StatusProjeto.AGUARDANDO);
+        suporteIndustrial.setDataCriacao(LocalDateTime.now().minusHours(6));
+        adicionarMaterial(suporteIndustrial, apmt, 4);
+        adicionarChecklist(suporteIndustrial,
+                new String[] { "Separar materiais", "Corte e furação", "Montagem", "Acabamento" }, 0);
+        projetoRepository.save(suporteIndustrial);
+
+        Projeto baseEsteira = new Projeto();
+        baseEsteira.setNome("Base para esteira - Cliente DEF");
+        baseEsteira.setDescricao("Base de sustentação para esteira transportadora.");
+        baseEsteira.setStatus(StatusProjeto.FINALIZADO);
+        baseEsteira.setDataCriacao(LocalDateTime.now().minusDays(10));
+        baseEsteira.setDataInicioProducao(LocalDateTime.now().minusDays(9));
+        baseEsteira.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(1));
+        baseEsteira.setDataPedido(LocalDate.now().minusDays(10));
+        baseEsteira.setMetaEntrega(LocalDate.now().plusDays(5));
+        adicionarChecklist(baseEsteira,
+                new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
+        projetoRepository.save(baseEsteira);
+
+        Projeto gradeProtecao = new Projeto();
+        gradeProtecao.setNome("Grade de proteção - Cliente GHI");
+        gradeProtecao.setDescricao("Grade de proteção para máquina industrial.");
+        gradeProtecao.setStatus(StatusProjeto.ENTREGUE);
+        gradeProtecao.setDataCriacao(LocalDateTime.now().minusDays(20));
+        gradeProtecao.setDataInicioProducao(LocalDateTime.now().minusDays(19));
+        gradeProtecao.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(15));
+        gradeProtecao.setDataPedido(LocalDate.now().minusDays(20));
+        gradeProtecao.setMetaEntrega(LocalDate.now().minusDays(13));
+        gradeProtecao.setDataEntrega(LocalDateTime.now().minusDays(14));
+        adicionarChecklist(gradeProtecao,
+                new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
+        projetoRepository.save(gradeProtecao);
+    }
+
+    private void adicionarMaterial(Projeto projeto, Pastilha pastilha, int quantidade) {
+        ProjetoMaterial material = new ProjetoMaterial();
+        material.setProjeto(projeto);
+        material.setPastilha(pastilha);
+        material.setQuantidade(quantidade);
+        projeto.getMateriais().add(material);
+    }
+
+    private void adicionarChecklist(Projeto projeto, String[] itens, int concluidosIniciais) {
+        for (int i = 0; i < itens.length; i++) {
+            ChecklistItem item = new ChecklistItem();
+            item.setProjeto(projeto);
+            item.setTexto(itens[i]);
+            item.setOrdem(i);
+            item.setConcluido(i < concluidosIniciais);
+            projeto.getChecklist().add(item);
+        }
     }
 
     /**

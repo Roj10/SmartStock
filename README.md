@@ -28,7 +28,7 @@ Usuários de demonstração (criados automaticamente):
 | Usuário  | Senha        | Perfil        | Acesso                                   |
 |----------|--------------|---------------|-------------------------------------------|
 | admin    | admin123     | ADMIN         | Todas as abas, incluindo Usuários         |
-| operador | operador123  | Funcionário   | Apenas Pastilhas (estoque) e Movimentações (produção) |
+| operador | operador123  | Funcionário   | Pastilhas (estoque), Movimentações e Progresso/Calendário (produção) |
 
 Console do H2 (opcional, para inspecionar o banco): `http://localhost:8080/h2-console` — JDBC URL `jdbc:h2:mem:smartstock`, usuário `sa`, senha em branco.
 
@@ -59,6 +59,13 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
 - Consulta de estoque em tempo real e alertas de estoque abaixo do mínimo.
 - Histórico de movimentações.
 - Painel (dashboard) com indicadores gerais, adaptado às permissões de quem está logado.
+- **Progresso de produção:** quadro com projetos "Aguardando início" e "Em produção", cada um com checklist de
+  etapas editável (marcar/desmarcar, adicionar/remover itens) e lista de materiais necessários (vinculados ao
+  cadastro de Pastilhas, com aviso quando a quantidade necessária excede o estoque atual). Ao finalizar a
+  produção, o projeto sai do quadro e passa a aparecer na aba Calendário.
+- **Calendário de entregas:** projetos finalizados aguardando entrega ("pedidos em aberto", com data do pedido e
+  meta de entrega editáveis) e histórico de entregas já realizadas, além de uma visão de calendário mensal
+  marcando os dias com meta de entrega e com entregas concluídas.
 
 ## Próximos passos sugeridos
 

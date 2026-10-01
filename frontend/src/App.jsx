@@ -7,6 +7,8 @@ import Pastilhas from './pages/Pastilhas';
 import Fornecedores from './pages/Fornecedores';
 import Movimentacoes from './pages/Movimentacoes';
 import Usuarios from './pages/Usuarios';
+import Progresso from './pages/Progresso';
+import Calendario from './pages/Calendario';
 
 export default function App() {
   return (
@@ -42,6 +44,22 @@ export default function App() {
           element={
             <ProtectedRoute permissao="MOVIMENTACOES">
               <Movimentacoes />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="progresso"
+          element={
+            <ProtectedRoute permissao="PROJETOS">
+              <Progresso />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="calendario"
+          element={
+            <ProtectedRoute permissao="PROJETOS">
+              <Calendario />
             </ProtectedRoute>
           }
         />

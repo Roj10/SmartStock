@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 
 const MODULOS = [
   { value: 'PASTILHAS', label: 'Estoque (Pastilhas)' },
-  { value: 'MOVIMENTACOES', label: 'Produção (Movimentações)' },
+  { value: 'MOVIMENTACOES', label: 'Movimentações (entrada/saída)' },
+  { value: 'PROJETOS', label: 'Progresso de produção e calendário' },
   { value: 'FORNECEDORES', label: 'Fornecedores' },
   { value: 'USUARIOS', label: 'Usuários (gerenciar contas)' },
 ];

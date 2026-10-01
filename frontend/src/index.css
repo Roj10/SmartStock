@@ -468,6 +468,12 @@ h1, h2, h3 {
   transition: opacity 0.15s ease, background 0.15s ease;
 }
 
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -747,6 +753,280 @@ h1, h2, h3 {
   color: var(--text-muted);
 }
 
+/* ---------- Kanban (Progresso) ---------- */
+
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.kanban-column {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kanban-column h2 {
+  font-size: 15px;
+}
+
+.kanban-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg);
+}
+
+.kanban-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kanban-card-header strong {
+  font-size: 14px;
+}
+
+.checklist-progress {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--neutral-bg);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.kanban-card-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.kanban-materiais {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kanban-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kanban-checklist label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.kanban-checklist input {
+  margin-top: 2px;
+}
+
+.checklist-done {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.kanban-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kanban-card-actions .spacer {
+  flex: 1;
+}
+
+/* ---------- Dynamic form fields (checklist / materiais) ---------- */
+
+.dynamic-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.dynamic-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dynamic-row select,
+.dynamic-row input[type='text'],
+.dynamic-row input:not([type]) {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.dynamic-qty {
+  width: 64px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+/* ---------- Calendário ---------- */
+
+.calendario-mes {
+  margin-bottom: 20px;
+}
+
+.calendario-mes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.calendario-mes-header h2 {
+  font-size: 16px;
+}
+
+.calendario-grade {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendario-dia-semana {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding-bottom: 6px;
+}
+
+.calendario-cel {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text);
+}
+
+.calendario-cel:hover {
+  border-color: var(--primary);
+}
+
+.calendario-cel.outro-mes {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.calendario-cel.hoje {
+  border-color: var(--primary);
+  font-weight: 700;
+}
+
+.calendario-cel.selecionado {
+  background: var(--info-bg);
+  border-color: var(--primary);
+}
+
+.calendario-dots {
+  display: flex;
+  gap: 3px;
+  min-height: 6px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-warning {
+  background: var(--warning);
+}
+
+.dot-success {
+  background: var(--success);
+}
+
+.calendario-legenda {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.calendario-legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendario-eventos-dia {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.calendario-eventos-dia ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.pedido-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pedido-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 820px) {
@@ -785,5 +1065,13 @@ h1, h2, h3 {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .kanban-board {
+    grid-template-columns: 1fr;
+  }
+
+  .calendario-cel {
+    font-size: 10px;
   }
 }

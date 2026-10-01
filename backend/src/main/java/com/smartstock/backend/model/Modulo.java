@@ -4,5 +4,6 @@ public enum Modulo {
     PASTILHAS,
     MOVIMENTACOES,
     FORNECEDORES,
-    USUARIOS
+    USUARIOS,
+    PROJETOS
 }
