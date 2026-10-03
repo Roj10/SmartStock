@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.smartstock.backend.dto.PastilhaRequest;
@@ -17,6 +18,7 @@ import com.smartstock.backend.exception.BusinessException;
 import com.smartstock.backend.exception.ResourceNotFoundException;
 import com.smartstock.backend.model.Fornecedor;
 import com.smartstock.backend.model.Pastilha;
+import com.smartstock.backend.repository.FornecedorProdutoRepository;
 import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
 
@@ -27,13 +29,16 @@ public class PastilhaService {
 
     private final PastilhaRepository pastilhaRepository;
     private final FornecedorRepository fornecedorRepository;
+    private final FornecedorProdutoRepository fornecedorProdutoRepository;
 
     @Value("${app.uploads.dir}")
     private String uploadsDir;
 
-    public PastilhaService(PastilhaRepository pastilhaRepository, FornecedorRepository fornecedorRepository) {
+    public PastilhaService(PastilhaRepository pastilhaRepository, FornecedorRepository fornecedorRepository,
+            FornecedorProdutoRepository fornecedorProdutoRepository) {
         this.pastilhaRepository = pastilhaRepository;
         this.fornecedorRepository = fornecedorRepository;
+        this.fornecedorProdutoRepository = fornecedorProdutoRepository;
     }
 
     public List<Pastilha> listar() {
@@ -71,8 +76,10 @@ public class PastilhaService {
         return pastilhaRepository.save(pastilha);
     }
 
+    @Transactional
     public void excluir(Long id) {
         Pastilha pastilha = buscarPorId(id);
+        fornecedorProdutoRepository.deleteByPastilhaId(id);
         removerArquivoImagem(pastilha);
         pastilhaRepository.delete(pastilha);
     }

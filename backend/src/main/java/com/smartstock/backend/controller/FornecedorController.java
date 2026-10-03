@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.smartstock.backend.dto.FornecedorProdutosRequest;
 import com.smartstock.backend.dto.FornecedorRequest;
 import com.smartstock.backend.model.Fornecedor;
+import com.smartstock.backend.model.FornecedorProduto;
 import com.smartstock.backend.service.FornecedorService;
 
 import jakarta.validation.Valid;
@@ -32,6 +34,19 @@ public class FornecedorController {
     @GetMapping
     public List<Fornecedor> listar() {
         return fornecedorService.listar();
+    }
+
+    @GetMapping("/produtos")
+    @PreAuthorize("hasAuthority('PERM_FORNECEDORES') or hasAuthority('PERM_FINANCEIRO')")
+    public List<FornecedorProduto> listarProdutos() {
+        return fornecedorService.listarProdutos();
+    }
+
+    @PutMapping("/{id}/produtos")
+    @PreAuthorize("hasAuthority('PERM_FORNECEDORES')")
+    public List<FornecedorProduto> salvarProdutos(@PathVariable Long id,
+            @Valid @RequestBody FornecedorProdutosRequest request) {
+        return fornecedorService.salvarProdutos(id, request);
     }
 
     @GetMapping("/{id}")

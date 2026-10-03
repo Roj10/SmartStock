@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/progresso', label: 'Progresso', icon: '◧', permissao: 'PROJETOS' },
   { to: '/calendario', label: 'Calendário', icon: '◱', permissao: 'PROJETOS' },
   { to: '/fornecedores', label: 'Fornecedores', icon: '⚑', permissao: 'FORNECEDORES' },
+  { to: '/financeiro', label: 'Financeiro', icon: '$', permissao: 'FINANCEIRO' },
   { to: '/usuarios', label: 'Usuários', icon: '👤', permissao: 'USUARIOS' },
 ];
 

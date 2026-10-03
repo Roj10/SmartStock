@@ -54,7 +54,8 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
 - Cadastro de pastilhas (código, descrição, fabricante, estoque mínimo, imagem do produto).
 - Upload de imagem por pastilha, com galeria de busca: digitar "imagem" ou "imagens" no campo de busca da aba
   Pastilhas mostra todas as fotos cadastradas, e clicar em uma rola a tela até o produto correspondente na tabela.
-- Cadastro de fabricantes/fornecedores.
+- Cadastro de fabricantes/fornecedores, com os **produtos que cada fornecedor entrega e o preço praticado**: a lista
+  aparece na própria tabela, facilitando saber de qual fornecedor é cada peça.
 - Registro de entrada e saída de estoque, com validação de estoque insuficiente. A entrada aceita várias
   pastilhas de uma vez (por exemplo, uma compra geral), cada linha com sua quantidade e seu fornecedor; se alguma
   linha falhar, nenhuma é gravada.
@@ -73,6 +74,14 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
   do pedido preenchida automaticamente; a meta de entrega e a data do pedido continuam editáveis. Há ainda o botão
   "Marcar como entregue", o histórico de entregas e um calendário mensal em que o dia inteiro fica colorido
   (laranja = meta de entrega, verde = entregue) com os projetos listados dentro do dia.
+
+- **Financeiro** (módulo de permissão próprio, não liberado ao funcionário de exemplo):
+  - *Peças e valores:* mesmo modelo da aba Pastilhas (busca, imagem), mostrando para cada peça o preço de cada
+    fornecedor (o menor em destaque), o estoque e o valor parado em estoque.
+  - *Vendas e planos:* planos feitos para os clientes sobre os projetos (valor, cliente, custo dos materiais e margem),
+    que podem ser fechados e passam a contar como venda; indicadores de total vendido, planos em aberto e margem.
+  - *Projetos:* custo de materiais de cada projeto frente ao valor planejado/vendido. O custo usa o menor preço
+    entre os fornecedores de cada material.
 
 ## Próximos passos sugeridos
 

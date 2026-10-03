@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,18 +24,23 @@ import org.springframework.stereotype.Component;
 
 import com.smartstock.backend.model.ChecklistItem;
 import com.smartstock.backend.model.Fornecedor;
+import com.smartstock.backend.model.FornecedorProduto;
 import com.smartstock.backend.model.Modulo;
 import com.smartstock.backend.model.Pastilha;
 import com.smartstock.backend.model.Projeto;
 import com.smartstock.backend.model.ProjetoMaterial;
 import com.smartstock.backend.model.Role;
 import com.smartstock.backend.model.StatusProjeto;
+import com.smartstock.backend.model.StatusVenda;
 import com.smartstock.backend.model.TipoFornecedor;
 import com.smartstock.backend.model.Usuario;
+import com.smartstock.backend.model.Venda;
+import com.smartstock.backend.repository.FornecedorProdutoRepository;
 import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
 import com.smartstock.backend.repository.ProjetoRepository;
 import com.smartstock.backend.repository.UsuarioRepository;
+import com.smartstock.backend.repository.VendaRepository;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -43,6 +49,8 @@ public class DataSeeder implements CommandLineRunner {
     private final FornecedorRepository fornecedorRepository;
     private final PastilhaRepository pastilhaRepository;
     private final ProjetoRepository projetoRepository;
+    private final FornecedorProdutoRepository fornecedorProdutoRepository;
+    private final VendaRepository vendaRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.uploads.dir}")
@@ -50,11 +58,14 @@ public class DataSeeder implements CommandLineRunner {
 
     public DataSeeder(UsuarioRepository usuarioRepository, FornecedorRepository fornecedorRepository,
             PastilhaRepository pastilhaRepository, ProjetoRepository projetoRepository,
+            FornecedorProdutoRepository fornecedorProdutoRepository, VendaRepository vendaRepository,
             PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.pastilhaRepository = pastilhaRepository;
         this.projetoRepository = projetoRepository;
+        this.fornecedorProdutoRepository = fornecedorProdutoRepository;
+        this.vendaRepository = vendaRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -64,6 +75,7 @@ public class DataSeeder implements CommandLineRunner {
         seedFornecedores();
         seedPastilhas();
         seedProjetos();
+        seedFinanceiro();
     }
 
     private void seedUsuarios() {
@@ -222,6 +234,7 @@ public class DataSeeder implements CommandLineRunner {
         baseEsteira.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(1));
         baseEsteira.setDataPedido(LocalDate.now().minusDays(10));
         baseEsteira.setMetaEntrega(LocalDate.now().plusDays(5));
+        adicionarMaterial(baseEsteira, cnmg, 20);
         adicionarChecklist(baseEsteira,
                 new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
         projetoRepository.save(baseEsteira);
@@ -237,9 +250,70 @@ public class DataSeeder implements CommandLineRunner {
         gradeProtecao.setDataPedido(LocalDate.now().minusDays(20));
         gradeProtecao.setMetaEntrega(LocalDate.now().minusDays(13));
         gradeProtecao.setDataEntrega(LocalDateTime.now().minusDays(14));
+        adicionarMaterial(gradeProtecao, apmt, 5);
         adicionarChecklist(gradeProtecao,
                 new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
         projetoRepository.save(gradeProtecao);
+    }
+
+    private void seedFinanceiro() {
+        if (fornecedorProdutoRepository.count() > 0) {
+            return;
+        }
+
+        List<Fornecedor> fornecedores = fornecedorRepository.findAll();
+        Fornecedor sandvik = fornecedores.get(0);
+        Fornecedor mitsubishi = fornecedores.get(1);
+        Fornecedor distribuidora = fornecedores.get(2);
+
+        List<Pastilha> pastilhas = pastilhaRepository.findAll();
+        Pastilha cnmg = pastilhas.get(0);
+        Pastilha apmt = pastilhas.get(1);
+        Pastilha dcmt = pastilhas.get(2);
+
+        // Quem fornece cada peça e por quanto (a distribuidora vende tudo, porém mais caro).
+        vincular(sandvik, cnmg, "12.50");
+        vincular(sandvik, dcmt, "9.80");
+        vincular(mitsubishi, apmt, "14.20");
+        vincular(distribuidora, cnmg, "13.90");
+        vincular(distribuidora, apmt, "15.00");
+        vincular(distribuidora, dcmt, "10.50");
+
+        for (Projeto projeto : projetoRepository.findAll()) {
+            String nome = projeto.getNome();
+            if (nome.startsWith("Cerca de metal")) {
+                criarVenda(projeto, "Cliente ABC", "Cerca de metal sob medida, com instalação.", "4500.00", StatusVenda.PLANO, null);
+            } else if (nome.startsWith("Suporte industrial")) {
+                criarVenda(projeto, "Cliente XYZ", "Suporte para fixação de equipamento.", "1800.00", StatusVenda.PLANO, null);
+            } else if (nome.startsWith("Base para esteira")) {
+                criarVenda(projeto, "Cliente DEF", "Base de sustentação para esteira.", "5800.00", StatusVenda.VENDA,
+                        LocalDate.now().minusDays(10));
+            } else if (nome.startsWith("Grade de proteção")) {
+                criarVenda(projeto, "Cliente GHI", "Grade de proteção para máquina.", "3200.00", StatusVenda.VENDA,
+                        LocalDate.now().minusDays(20));
+            }
+        }
+    }
+
+    private void vincular(Fornecedor fornecedor, Pastilha pastilha, String preco) {
+        FornecedorProduto fp = new FornecedorProduto();
+        fp.setFornecedor(fornecedor);
+        fp.setPastilha(pastilha);
+        fp.setPreco(new BigDecimal(preco));
+        fornecedorProdutoRepository.save(fp);
+    }
+
+    private void criarVenda(Projeto projeto, String cliente, String descricao, String valor, StatusVenda status,
+            LocalDate dataVenda) {
+        Venda venda = new Venda();
+        venda.setProjeto(projeto);
+        venda.setCliente(cliente);
+        venda.setDescricao(descricao);
+        venda.setValor(new BigDecimal(valor));
+        venda.setStatus(status);
+        venda.setDataCriacao(dataVenda != null ? dataVenda : LocalDate.now().minusDays(2));
+        venda.setDataVenda(dataVenda);
+        vendaRepository.save(venda);
     }
 
     private void adicionarMaterial(Projeto projeto, Pastilha pastilha, int quantidade) {

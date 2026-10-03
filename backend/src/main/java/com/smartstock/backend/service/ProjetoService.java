@@ -22,6 +22,7 @@ import com.smartstock.backend.model.ProjetoMaterial;
 import com.smartstock.backend.model.StatusProjeto;
 import com.smartstock.backend.repository.PastilhaRepository;
 import com.smartstock.backend.repository.ProjetoRepository;
+import com.smartstock.backend.repository.VendaRepository;
 
 @Service
 public class ProjetoService {
@@ -29,12 +30,14 @@ public class ProjetoService {
     private final ProjetoRepository projetoRepository;
     private final PastilhaRepository pastilhaRepository;
     private final MovimentacaoService movimentacaoService;
+    private final VendaRepository vendaRepository;
 
     public ProjetoService(ProjetoRepository projetoRepository, PastilhaRepository pastilhaRepository,
-            MovimentacaoService movimentacaoService) {
+            MovimentacaoService movimentacaoService, VendaRepository vendaRepository) {
         this.projetoRepository = projetoRepository;
         this.pastilhaRepository = pastilhaRepository;
         this.movimentacaoService = movimentacaoService;
+        this.vendaRepository = vendaRepository;
     }
 
     public List<Projeto> listarProgresso() {
@@ -141,8 +144,11 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    @Transactional
     public void excluir(Long id) {
         Projeto projeto = buscarPorId(id);
+        // vendas e planos já registrados continuam existindo, apenas sem o vínculo com o projeto
+        vendaRepository.findByProjetoId(id).forEach(v -> v.setProjeto(null));
         projetoRepository.delete(projeto);
     }
 

@@ -22,7 +22,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/pastilhas")
-@PreAuthorize("hasAuthority('PERM_PASTILHAS') or hasAuthority('PERM_MOVIMENTACOES') or hasAuthority('PERM_PROJETOS')")
+@PreAuthorize("hasAuthority('PERM_PASTILHAS') or hasAuthority('PERM_MOVIMENTACOES') or hasAuthority('PERM_PROJETOS') or hasAuthority('PERM_FORNECEDORES')")
 public class PastilhaController {
 
     private final PastilhaService pastilhaService;

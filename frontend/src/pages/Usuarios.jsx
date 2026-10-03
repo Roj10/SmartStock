@@ -8,6 +8,7 @@ const MODULOS = [
   { value: 'MOVIMENTACOES', label: 'Movimentações (entrada/saída)' },
   { value: 'PROJETOS', label: 'Progresso de produção e calendário' },
   { value: 'FORNECEDORES', label: 'Fornecedores' },
+  { value: 'FINANCEIRO', label: 'Financeiro (valores, vendas e planos)' },
   { value: 'USUARIOS', label: 'Usuários (gerenciar contas)' },
 ];
 

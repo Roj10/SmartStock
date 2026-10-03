@@ -5,5 +5,6 @@ public enum Modulo {
     MOVIMENTACOES,
     FORNECEDORES,
     USUARIOS,
-    PROJETOS
+    PROJETOS,
+    FINANCEIRO
 }

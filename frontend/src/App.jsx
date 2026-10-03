@@ -9,6 +9,7 @@ import Movimentacoes from './pages/Movimentacoes';
 import Usuarios from './pages/Usuarios';
 import Progresso from './pages/Progresso';
 import Calendario from './pages/Calendario';
+import Financeiro from './pages/Financeiro';
 
 export default function App() {
   return (
@@ -60,6 +61,14 @@ export default function App() {
           element={
             <ProtectedRoute permissao="PROJETOS">
               <Calendario />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="financeiro"
+          element={
+            <ProtectedRoute permissao="FINANCEIRO">
+              <Financeiro />
             </ProtectedRoute>
           }
         />
