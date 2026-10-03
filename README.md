@@ -55,7 +55,9 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
 - Upload de imagem por pastilha, com galeria de busca: digitar "imagem" ou "imagens" no campo de busca da aba
   Pastilhas mostra todas as fotos cadastradas, e clicar em uma rola a tela até o produto correspondente na tabela.
 - Cadastro de fabricantes/fornecedores.
-- Registro de entrada e saída de estoque, com validação de estoque insuficiente.
+- Registro de entrada e saída de estoque, com validação de estoque insuficiente. A entrada aceita várias
+  pastilhas de uma vez (por exemplo, uma compra geral), cada linha com sua quantidade e seu fornecedor; se alguma
+  linha falhar, nenhuma é gravada.
 - Consulta de estoque em tempo real e alertas de estoque abaixo do mínimo.
 - Histórico de movimentações.
 - Painel (dashboard) com indicadores gerais, adaptado às permissões de quem está logado.
@@ -64,6 +66,9 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
   entrega (informa-se o cliente e envia-se o pedido). Cada projeto tem um número de ordem (OP-001...), a fila mostra
   os mais antigos primeiro e só é possível avançar ou voltar uma etapa por vez. Os materiais necessários são
   vinculados ao cadastro de Pastilhas, com aviso quando a quantidade excede o estoque atual.
+  Ao enviar o pedido, o sistema registra automaticamente a saída de estoque com exatamente as quantidades
+  solicitadas no projeto (identificada pelo número da OP e pelo cliente); se faltar estoque de algum item, o envio
+  é bloqueado e nada é baixado.
 - **Calendário de entregas:** ao enviar o pedido, o projeto passa para o Calendário com o nome do cliente e a data
   do pedido preenchida automaticamente; a meta de entrega e a data do pedido continuam editáveis. Há ainda o botão
   "Marcar como entregue", o histórico de entregas e um calendário mensal em que o dia inteiro fica colorido

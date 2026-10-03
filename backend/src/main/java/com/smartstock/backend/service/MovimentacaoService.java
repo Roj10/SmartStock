@@ -1,18 +1,24 @@
 package com.smartstock.backend.service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.smartstock.backend.dto.EntradaLoteRequest;
 import com.smartstock.backend.dto.MovimentacaoRequest;
 import com.smartstock.backend.exception.BusinessException;
 import com.smartstock.backend.exception.ResourceNotFoundException;
 import com.smartstock.backend.model.Fornecedor;
 import com.smartstock.backend.model.Movimentacao;
 import com.smartstock.backend.model.Pastilha;
+import com.smartstock.backend.model.Projeto;
+import com.smartstock.backend.model.ProjetoMaterial;
 import com.smartstock.backend.model.TipoMovimentacao;
 import com.smartstock.backend.model.Usuario;
 import com.smartstock.backend.repository.FornecedorRepository;
@@ -53,6 +59,56 @@ public class MovimentacaoService {
 
         pastilhaRepository.save(pastilha);
         return movimentacaoRepository.save(movimentacao);
+    }
+
+    /** Registra várias entradas de uma vez; se alguma falhar, nenhuma é gravada. */
+    @Transactional
+    public List<Movimentacao> registrarEntradaLote(EntradaLoteRequest request) {
+        List<Movimentacao> registradas = new ArrayList<>();
+        for (MovimentacaoRequest item : request.getItens()) {
+            if (item.getObservacao() == null || item.getObservacao().isBlank()) {
+                item.setObservacao(request.getObservacao());
+            }
+            registradas.add(registrarEntrada(item));
+        }
+        return registradas;
+    }
+
+    /**
+     * Baixa do estoque exatamente os materiais solicitados no projeto, quando o
+     * pedido é enviado ao cliente. Se faltar estoque de qualquer item, nada é baixado.
+     */
+    @Transactional
+    public List<Movimentacao> registrarSaidasDoProjeto(Projeto projeto, String cliente) {
+        Map<Long, Integer> necessario = new LinkedHashMap<>();
+        for (ProjetoMaterial material : projeto.getMateriais()) {
+            necessario.merge(material.getPastilha().getId(), material.getQuantidade(), Integer::sum);
+        }
+
+        List<String> faltas = new ArrayList<>();
+        for (Map.Entry<Long, Integer> item : necessario.entrySet()) {
+            Pastilha pastilha = buscarPastilha(item.getKey());
+            if (pastilha.getQuantidadeAtual() < item.getValue()) {
+                faltas.add(pastilha.getCodigo() + " (necessário " + item.getValue()
+                        + ", disponível " + pastilha.getQuantidadeAtual() + ")");
+            }
+        }
+        if (!faltas.isEmpty()) {
+            throw new BusinessException("Estoque insuficiente para enviar o pedido: " + String.join("; ", faltas)
+                    + ". Registre uma entrada de estoque e tente novamente.");
+        }
+
+        String observacao = String.format("Saída automática do projeto OP-%03d - %s (cliente: %s)",
+                projeto.getId(), projeto.getNome(), cliente);
+        List<Movimentacao> registradas = new ArrayList<>();
+        for (Map.Entry<Long, Integer> item : necessario.entrySet()) {
+            MovimentacaoRequest saida = new MovimentacaoRequest();
+            saida.setPastilhaId(item.getKey());
+            saida.setQuantidade(item.getValue());
+            saida.setObservacao(observacao);
+            registradas.add(registrarSaida(saida));
+        }
+        return registradas;
     }
 
     @Transactional

@@ -177,7 +177,14 @@ export default function Progresso() {
       alert('Informe o nome do cliente para enviar o pedido.');
       return;
     }
-    if (!window.confirm(`Enviar o pedido "${projeto.nome}" para ${cliente}?`)) return;
+    const baixa = projeto.materiais.length
+      ? `
+
+Os materiais do projeto serão baixados do estoque: ${projeto.materiais
+          .map((m) => `${m.pastilha.codigo} × ${m.quantidade}`)
+          .join(', ')}.`
+      : '';
+    if (!window.confirm(`Enviar o pedido "${projeto.nome}" para ${cliente}?${baixa}`)) return;
     try {
       await api.post(`/projetos/${projeto.id}/enviar-pedido`, {
         cliente,
@@ -248,6 +255,9 @@ export default function Progresso() {
 
         {ultima && (
           <div className="kanban-envio">
+            {projeto.materiais.length > 0 && (
+              <small className="envio-aviso">Ao enviar o pedido, os materiais acima saem do estoque.</small>
+            )}
             <label>
               Cliente
               <input

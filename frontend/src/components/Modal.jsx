@@ -1,7 +1,7 @@
-export default function Modal({ title, onClose, children, footer }) {
+export default function Modal({ title, onClose, children, footer, largo = false }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className={largo ? 'modal modal-largo' : 'modal'} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{title}</h3>
           <button className="btn-icon" onClick={onClose} aria-label="Fechar">

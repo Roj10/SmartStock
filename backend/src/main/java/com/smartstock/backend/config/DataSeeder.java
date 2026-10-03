@@ -163,6 +163,7 @@ public class DataSeeder implements CommandLineRunner {
         List<Pastilha> pastilhas = pastilhaRepository.findAll();
         Pastilha cnmg = pastilhas.get(0);
         Pastilha apmt = pastilhas.get(1);
+        Pastilha dcmt = pastilhas.get(2);
 
         // Exemplo citado pelo usuário: projeto de cerca de metal, em produção,
         // com parte do checklist já concluída.
@@ -204,6 +205,7 @@ public class DataSeeder implements CommandLineRunner {
         escada.setDescricao("Escada de acesso ao reservatório, liberada para entrega.");
         escada.setStatus(StatusProjeto.PRONTO_ENTREGA);
         escada.setCliente("Cliente MNO");
+        adicionarMaterial(escada, dcmt, 2);
         escada.setDataCriacao(LocalDateTime.now().minusDays(8));
         escada.setDataInicioProducao(LocalDateTime.now().minusDays(7));
         escada.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(3));

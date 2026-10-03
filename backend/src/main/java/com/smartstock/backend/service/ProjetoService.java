@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.smartstock.backend.dto.CalendarioUpdateRequest;
 import com.smartstock.backend.dto.ChecklistItemRequest;
@@ -27,10 +28,13 @@ public class ProjetoService {
 
     private final ProjetoRepository projetoRepository;
     private final PastilhaRepository pastilhaRepository;
+    private final MovimentacaoService movimentacaoService;
 
-    public ProjetoService(ProjetoRepository projetoRepository, PastilhaRepository pastilhaRepository) {
+    public ProjetoService(ProjetoRepository projetoRepository, PastilhaRepository pastilhaRepository,
+            MovimentacaoService movimentacaoService) {
         this.projetoRepository = projetoRepository;
         this.pastilhaRepository = pastilhaRepository;
+        this.movimentacaoService = movimentacaoService;
     }
 
     public List<Projeto> listarProgresso() {
@@ -93,6 +97,7 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    @Transactional
     public Projeto enviarPedido(Long id, EnviarPedidoRequest request) {
         Projeto projeto = buscarPorId(id);
         if (projeto.getStatus() != StatusProjeto.PRONTO_ENTREGA) {
@@ -103,6 +108,8 @@ public class ProjetoService {
         if (request.getMetaEntrega() != null) {
             projeto.setMetaEntrega(request.getMetaEntrega());
         }
+        movimentacaoService.registrarSaidasDoProjeto(projeto, projeto.getCliente());
+
         projeto.setStatus(StatusProjeto.PEDIDO_ENVIADO);
         return projetoRepository.save(projeto);
     }

@@ -700,6 +700,34 @@ h1, h2, h3 {
   box-shadow: 0 20px 40px rgba(16, 24, 40, 0.2);
 }
 
+.modal-largo {
+  max-width: 720px;
+}
+
+.entrada-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) 76px minmax(0, 1.1fr) 28px;
+  gap: 8px;
+  align-items: center;
+}
+
+.entrada-linha select,
+.entrada-linha input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 0;
+  width: 100%;
+}
+
+.entrada-cabecalho {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
 .modal-header {
   display: flex;
   align-items: center;
@@ -846,6 +874,12 @@ h1, h2, h3 {
   padding: 7px 9px;
   font-size: 13px;
   font-family: inherit;
+}
+
+.envio-aviso {
+  font-size: 11px;
+  color: var(--warning);
+  font-weight: 600;
 }
 
 .pedido-cliente {
@@ -1173,6 +1207,20 @@ h1, h2, h3 {
 
   .kanban-board {
     grid-template-columns: 1fr;
+  }
+
+  .entrada-linha {
+    grid-template-columns: 1fr 70px 28px;
+    grid-template-areas: 'p q x' 'f f f';
+  }
+
+  .entrada-linha > :nth-child(1) { grid-area: p; }
+  .entrada-linha > :nth-child(2) { grid-area: q; }
+  .entrada-linha > :nth-child(3) { grid-area: f; }
+  .entrada-linha > :nth-child(4) { grid-area: x; }
+
+  .entrada-cabecalho {
+    display: none;
   }
 
   .calendario-grade {

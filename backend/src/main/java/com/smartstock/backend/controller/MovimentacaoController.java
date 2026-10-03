@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.smartstock.backend.dto.EntradaLoteRequest;
 import com.smartstock.backend.dto.MovimentacaoRequest;
 import com.smartstock.backend.model.Movimentacao;
 import com.smartstock.backend.service.MovimentacaoService;
@@ -38,6 +39,11 @@ public class MovimentacaoController {
     @PostMapping("/entrada")
     public Movimentacao registrarEntrada(@Valid @RequestBody MovimentacaoRequest request) {
         return movimentacaoService.registrarEntrada(request);
+    }
+
+    @PostMapping("/entrada/lote")
+    public List<Movimentacao> registrarEntradaLote(@Valid @RequestBody EntradaLoteRequest request) {
+        return movimentacaoService.registrarEntradaLote(request);
     }
 
     @PostMapping("/saida")
