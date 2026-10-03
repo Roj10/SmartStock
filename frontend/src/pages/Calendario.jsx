@@ -50,7 +50,6 @@ export default function Calendario() {
     const hoje = new Date();
     return new Date(hoje.getFullYear(), hoje.getMonth(), 1);
   });
-  const [diaSelecionado, setDiaSelecionado] = useState(null);
 
   function carregar() {
     setLoading(true);
@@ -121,7 +120,6 @@ export default function Calendario() {
   }, [pedidosAbertos, historicoEntregas]);
 
   const dias = useMemo(() => gerarGrade(mesReferencia), [mesReferencia]);
-  const eventosDoDiaSelecionado = diaSelecionado ? eventosPorDia.get(diaSelecionado) ?? [] : [];
 
   return (
     <div>
@@ -162,56 +160,45 @@ export default function Calendario() {
           {dias.map((dia) => {
             const chave = paraChave(dia);
             const eventos = eventosPorDia.get(chave) ?? [];
+            const temMeta = eventos.some((e) => e.tipo === 'meta');
+            const temEntrega = eventos.some((e) => e.tipo === 'entrega');
             const outroMes = dia.getMonth() !== mesReferencia.getMonth();
             const hoje = paraChave(new Date()) === chave;
             return (
-              <button
-                type="button"
+              <div
                 key={chave}
                 className={
                   'calendario-cel' +
                   (outroMes ? ' outro-mes' : '') +
                   (hoje ? ' hoje' : '') +
-                  (diaSelecionado === chave ? ' selecionado' : '')
+                  (temMeta && temEntrega ? ' ev-ambos' : temMeta ? ' ev-meta' : temEntrega ? ' ev-entrega' : '')
                 }
-                onClick={() => setDiaSelecionado(chave === diaSelecionado ? null : chave)}
               >
-                <span>{dia.getDate()}</span>
-                <div className="calendario-dots">
-                  {eventos.some((e) => e.tipo === 'meta') && <span className="dot dot-warning" />}
-                  {eventos.some((e) => e.tipo === 'entrega') && <span className="dot dot-success" />}
+                <span className="calendario-num">{dia.getDate()}</span>
+                <div className="calendario-eventos">
+                  {eventos.map((ev, i) => (
+                    <span
+                      key={i}
+                      className={`calendario-evento ${ev.tipo === 'meta' ? 'evento-meta' : 'evento-entrega'}`}
+                      title={`${ev.tipo === 'meta' ? 'Meta de entrega' : 'Entregue'}: ${ev.projeto.nome}`}
+                    >
+                      {ev.projeto.nome}
+                    </span>
+                  ))}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
 
         <div className="calendario-legenda">
           <span>
-            <span className="dot dot-warning" /> Meta de entrega
+            <span className="legenda-cor legenda-meta" /> Meta de entrega
           </span>
           <span>
-            <span className="dot dot-success" /> Entregue
+            <span className="legenda-cor legenda-entrega" /> Entregue
           </span>
         </div>
-
-        {diaSelecionado && (
-          <div className="calendario-eventos-dia">
-            <strong>{formatarData(diaSelecionado)}</strong>
-            {eventosDoDiaSelecionado.length === 0 ? (
-              <p className="empty-state">Nenhum evento neste dia.</p>
-            ) : (
-              <ul>
-                {eventosDoDiaSelecionado.map((ev, i) => (
-                  <li key={i}>
-                    {ev.tipo === 'meta' ? 'Meta de entrega: ' : 'Entregue: '}
-                    {ev.projeto.nome}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </section>
 
       {loading ? (

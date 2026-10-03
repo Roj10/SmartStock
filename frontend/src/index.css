@@ -899,23 +899,29 @@ h1, h2, h3 {
 
 .calendario-mes {
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .calendario-mes-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .calendario-mes-header h2 {
   font-size: 16px;
 }
 
+/* A grade ocupa a altura da tela para o mês inteiro (6 semanas) caber sem rolar. */
 .calendario-grade {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto repeat(6, minmax(0, 1fr));
   gap: 4px;
+  height: calc(100vh - 270px);
+  min-height: 420px;
 }
 
 .calendario-dia-semana {
@@ -924,69 +930,86 @@ h1, h2, h3 {
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  padding-bottom: 6px;
+  padding-bottom: 2px;
 }
 
 .calendario-cel {
-  aspect-ratio: 1;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
-  cursor: pointer;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+  gap: 3px;
+  padding: 4px;
   font-size: 12px;
-  font-family: inherit;
   color: var(--text);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.calendario-cel:hover {
-  border-color: var(--primary);
+.calendario-num {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .calendario-cel.outro-mes {
-  color: var(--text-muted);
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .calendario-cel.hoje {
-  border-color: var(--primary);
-  font-weight: 700;
+  border: 2px solid var(--primary);
 }
 
-.calendario-cel.selecionado {
-  background: var(--info-bg);
-  border-color: var(--primary);
+.calendario-cel.ev-meta {
+  background: var(--warning-bg);
+  border-color: var(--warning);
 }
 
-.calendario-dots {
+.calendario-cel.ev-entrega {
+  background: var(--success-bg);
+  border-color: var(--success);
+}
+
+.calendario-cel.ev-ambos {
+  background: linear-gradient(135deg, var(--warning-bg) 50%, var(--success-bg) 50%);
+  border-color: var(--warning);
+}
+
+.calendario-eventos {
   display: flex;
-  gap: 3px;
-  min-height: 6px;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
+.calendario-evento {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.dot-warning {
+.evento-meta {
   background: var(--warning);
 }
 
-.dot-success {
+.evento-entrega {
   background: var(--success);
 }
 
 .calendario-legenda {
   display: flex;
   gap: 16px;
-  margin-top: 12px;
+  margin-top: 10px;
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -997,16 +1020,19 @@ h1, h2, h3 {
   gap: 6px;
 }
 
-.calendario-eventos-dia {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-  font-size: 13px;
+.legenda-cor {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
 }
 
-.calendario-eventos-dia ul {
-  margin: 8px 0 0;
-  padding-left: 18px;
+.legenda-meta {
+  background: var(--warning);
+}
+
+.legenda-entrega {
+  background: var(--success);
 }
 
 .pedido-card {
@@ -1071,7 +1097,13 @@ h1, h2, h3 {
     grid-template-columns: 1fr;
   }
 
-  .calendario-cel {
-    font-size: 10px;
+  .calendario-grade {
+    height: calc(100vh - 340px);
+    min-height: 380px;
+  }
+
+  .calendario-evento {
+    font-size: 9px;
+    padding: 1px 2px;
   }
 }
