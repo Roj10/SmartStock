@@ -97,7 +97,7 @@ export default function Usuarios() {
   const ehMinhaConta = (u) => u.username === usuarioLogado?.username;
 
   return (
-    <div>
+    <div className="pagina-fixa">
       <header className="page-header page-header-actions">
         <div>
           <h1>Usuários e permissões</h1>
@@ -115,13 +115,13 @@ export default function Usuarios() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      <section className="panel">
+      <section className="panel painel-tabela">
         {loading ? (
           <p className="empty-state">Carregando...</p>
         ) : lista.length === 0 ? (
           <p className="empty-state">Nenhum usuário cadastrado.</p>
         ) : (
-          <div className="table-scroll">
+          <div className="table-scroll rolavel">
             <table className="table">
               <thead>
                 <tr>

@@ -1,11 +1,14 @@
 import axios from 'axios';
 
+// A sessão fica em sessionStorage (e não localStorage) para ser própria de cada aba: assim duas contas
+// diferentes (ex.: produção e financeiro) podem ficar logadas lado a lado, em abas separadas, sem uma
+// derrubar ou se misturar com a outra.
 const api = axios.create({
   baseURL: 'http://localhost:8080/api',
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('smartstock_token');
+  const token = sessionStorage.getItem('smartstock_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -16,8 +19,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('smartstock_token');
-      localStorage.removeItem('smartstock_user');
+      sessionStorage.removeItem('smartstock_token');
+      sessionStorage.removeItem('smartstock_user');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

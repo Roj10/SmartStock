@@ -5,27 +5,27 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('smartstock_user');
+    const stored = sessionStorage.getItem('smartstock_user');
     return stored ? JSON.parse(stored) : null;
   });
 
   const login = useCallback(async (username, senha) => {
     const { data } = await api.post('/auth/login', { username, senha });
-    localStorage.setItem('smartstock_token', data.token);
+    sessionStorage.setItem('smartstock_token', data.token);
     const userData = {
       username: data.username,
       nome: data.nome,
       role: data.role,
       permissoes: data.permissoes ?? [],
     };
-    localStorage.setItem('smartstock_user', JSON.stringify(userData));
+    sessionStorage.setItem('smartstock_user', JSON.stringify(userData));
     setUser(userData);
     return userData;
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('smartstock_token');
-    localStorage.removeItem('smartstock_user');
+    sessionStorage.removeItem('smartstock_token');
+    sessionStorage.removeItem('smartstock_user');
     setUser(null);
   }, []);
 

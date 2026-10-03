@@ -209,6 +209,7 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
   function renderCard(projeto, indice) {
     const ultima = indice === ETAPAS.length - 1;
     const mostrarChecklist = indice <= 1;
+    const podeMarcar = projeto.status === 'EM_PRODUCAO';
     return (
       <div key={projeto.id} className="kanban-card">
         <div className="kanban-card-header">
@@ -240,10 +241,11 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
           <ul className="kanban-checklist">
             {projeto.checklist.map((item) => (
               <li key={item.id}>
-                <label>
+                <label title={podeMarcar ? undefined : 'Inicie a produção para marcar as etapas'}>
                   <input
                     type="checkbox"
                     checked={item.concluido}
+                    disabled={!podeMarcar}
                     onChange={() => alternarChecklist(projeto, item)}
                   />
                   <span className={item.concluido ? 'checklist-done' : ''}>{item.texto}</span>
@@ -429,6 +431,7 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
                     <input
                       type="checkbox"
                       checked={item.concluido}
+                      disabled={editando.status !== 'EM_PRODUCAO'}
                       onChange={(e) => atualizarItemChecklist(i, 'concluido', e.target.checked)}
                     />
                   )}

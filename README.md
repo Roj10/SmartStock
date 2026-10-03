@@ -29,6 +29,9 @@ Usuários de demonstração (criados automaticamente):
 |----------|--------------|---------------|-------------------------------------------|
 | admin    | admin123     | ADMIN         | Todas as abas, incluindo Usuários         |
 | operador | operador123  | Funcionário   | Pastilhas (estoque), Movimentações e Progresso/Calendário (produção) |
+| financeiro | financeiro123 | Funcionário  | Financeiro e Fornecedores (compras, valores, vendas e planos)       |
+
+Todas as contas têm acesso à aba **Mensagens**, que não depende de permissão.
 
 Console do H2 (opcional, para inspecionar o banco): `http://localhost:8080/h2-console` — JDBC URL `jdbc:h2:mem:smartstock`, usuário `sa`, senha em branco.
 
@@ -82,6 +85,22 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
     que podem ser fechados e passam a contar como venda; indicadores de total vendido, planos em aberto e margem.
   - *Projetos:* custo de materiais de cada projeto frente ao valor planejado/vendido. O custo usa o menor preço
     entre os fornecedores de cada material.
+
+- **Mensagens entre setores:** cada conta representa um setor e pode conversar diretamente com as demais — por
+  exemplo, a produção avisa o financeiro que é preciso comprar mais peças para o estoque. A lista mostra o setor de
+  cada conta (deduzido das abas a que ela tem acesso), a última mensagem e quantas ainda não foram lidas; o menu
+  exibe o total de mensagens novas. A conversa se atualiza sozinha a cada poucos segundos, Enter envia e
+  Shift+Enter quebra a linha. A lista de contas não revela logins nem senhas, e as conversas de uma conta excluída
+  são apagadas junto com ela (inclusive as imagens).
+  - *Emojis:* botão 😊 com um seletor por categorias (carinhas, gestos, trabalho e símbolos), além de aceitar os
+    emojis digitados pelo teclado do sistema; mensagens só com emojis aparecem em tamanho maior.
+  - *Imagens:* botão 📎, arrastar a imagem para a conversa ou colar com Ctrl+V (por exemplo, um print de tela),
+    com legenda opcional, pré-visualização antes de enviar e ampliação ao clicar. Aceita PNG, JPG, WEBP e GIF de
+    até 5 MB; o tipo é conferido pelo conteúdo do arquivo, não só pela extensão.
+  - *Privacidade das imagens:* ficam em `backend/uploads-privado/` (fora do controle de versão), sem link público;
+    só quem enviou ou recebeu a mensagem consegue baixá-las, com o login ativo.
+  - *Uma conta por aba:* o login é guardado por aba do navegador, então duas contas podem conversar lado a lado em
+    abas diferentes sem se misturar.
 
 ## Próximos passos sugeridos
 

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.smartstock.backend.dto.UsuarioRequest;
 import com.smartstock.backend.exception.BusinessException;
@@ -17,10 +18,13 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MensagemService mensagemService;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
+            MensagemService mensagemService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.mensagemService = mensagemService;
     }
 
     public List<Usuario> listar() {
@@ -71,6 +75,7 @@ public class UsuarioService {
         return usuarioRepository.save(usuario);
     }
 
+    @Transactional
     public void excluir(Long id, String usernameAtor, boolean atorEhAdmin) {
         Usuario usuario = buscarPorId(id);
 
@@ -86,6 +91,8 @@ public class UsuarioService {
             }
         }
 
+        // as conversas da conta excluída saem junto
+        mensagemService.excluirConversasDoUsuario(id);
         usuarioRepository.delete(usuario);
     }
 

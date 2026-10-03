@@ -10,6 +10,7 @@ import Usuarios from './pages/Usuarios';
 import Progresso from './pages/Progresso';
 import Calendario from './pages/Calendario';
 import Financeiro from './pages/Financeiro';
+import Mensagens from './pages/Mensagens';
 
 export default function App() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="mensagens" element={<Mensagens />} />
         <Route
           path="usuarios"
           element={

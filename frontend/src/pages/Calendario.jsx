@@ -122,7 +122,7 @@ export default function Calendario() {
   const dias = useMemo(() => gerarGrade(mesReferencia), [mesReferencia]);
 
   return (
-    <div>
+    <div className="pagina-fixa">
       <header className="page-header">
         <h1>Calendário de entregas</h1>
         <p>Pedidos enviados aguardando entrega e histórico de entregas já realizadas.</p>
@@ -130,6 +130,7 @@ export default function Calendario() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
+      <div className="calendario-layout">
       <section className="panel calendario-mes">
         <div className="calendario-mes-header">
           <button
@@ -204,13 +205,14 @@ export default function Calendario() {
       {loading ? (
         <p className="empty-state">Carregando...</p>
       ) : (
-        <div className="panels-grid">
-          <section className="panel">
+        <div className="calendario-lateral">
+          <section className="panel painel-rolavel">
             <h2>Pedidos em aberto ({pedidosAbertos.length})</h2>
             {pedidosAbertos.length === 0 ? (
               <p className="empty-state">Nenhum pedido aguardando entrega.</p>
             ) : (
-              pedidosAbertos.map((p) => (
+              <div className="painel-rolavel-corpo">
+              {pedidosAbertos.map((p) => (
                 <div key={p.id} className="pedido-card">
                   <div className="pedido-card-header">
                     <div>
@@ -248,16 +250,17 @@ export default function Calendario() {
                     {salvandoId === p.id ? 'Salvando...' : 'Salvar datas'}
                   </button>
                 </div>
-              ))
+              ))}
+              </div>
             )}
           </section>
 
-          <section className="panel">
+          <section className="panel painel-rolavel">
             <h2>Histórico de entregas ({historicoEntregas.length})</h2>
             {historicoEntregas.length === 0 ? (
               <p className="empty-state">Nenhuma entrega registrada ainda.</p>
             ) : (
-              <div className="table-scroll">
+              <div className="table-scroll rolavel">
                 <table className="table">
                   <thead>
                     <tr>
@@ -285,6 +288,7 @@ export default function Calendario() {
           </section>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -33,12 +33,14 @@ import com.smartstock.backend.model.Role;
 import com.smartstock.backend.model.StatusProjeto;
 import com.smartstock.backend.model.StatusVenda;
 import com.smartstock.backend.model.TipoFornecedor;
+import com.smartstock.backend.model.Mensagem;
 import com.smartstock.backend.model.Usuario;
 import com.smartstock.backend.model.Venda;
 import com.smartstock.backend.repository.FornecedorProdutoRepository;
 import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
 import com.smartstock.backend.repository.ProjetoRepository;
+import com.smartstock.backend.repository.MensagemRepository;
 import com.smartstock.backend.repository.UsuarioRepository;
 import com.smartstock.backend.repository.VendaRepository;
 
@@ -46,6 +48,7 @@ import com.smartstock.backend.repository.VendaRepository;
 public class DataSeeder implements CommandLineRunner {
 
     private final UsuarioRepository usuarioRepository;
+    private final MensagemRepository mensagemRepository;
     private final FornecedorRepository fornecedorRepository;
     private final PastilhaRepository pastilhaRepository;
     private final ProjetoRepository projetoRepository;
@@ -59,13 +62,14 @@ public class DataSeeder implements CommandLineRunner {
     public DataSeeder(UsuarioRepository usuarioRepository, FornecedorRepository fornecedorRepository,
             PastilhaRepository pastilhaRepository, ProjetoRepository projetoRepository,
             FornecedorProdutoRepository fornecedorProdutoRepository, VendaRepository vendaRepository,
-            PasswordEncoder passwordEncoder) {
+            MensagemRepository mensagemRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.pastilhaRepository = pastilhaRepository;
         this.projetoRepository = projetoRepository;
         this.fornecedorProdutoRepository = fornecedorProdutoRepository;
         this.vendaRepository = vendaRepository;
+        this.mensagemRepository = mensagemRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -76,6 +80,7 @@ public class DataSeeder implements CommandLineRunner {
         seedPastilhas();
         seedProjetos();
         seedFinanceiro();
+        seedMensagens();
     }
 
     private void seedUsuarios() {
@@ -100,6 +105,45 @@ public class DataSeeder implements CommandLineRunner {
         operador.setRole(Role.OPERADOR);
         operador.setPermissoes(Set.of(Modulo.PASTILHAS, Modulo.MOVIMENTACOES, Modulo.PROJETOS));
         usuarioRepository.save(operador);
+
+        // Conta do setor financeiro: compras, valores, vendas e planos.
+        Usuario financeiro = new Usuario();
+        financeiro.setNome("Setor Financeiro");
+        financeiro.setUsername("financeiro");
+        financeiro.setSenha(passwordEncoder.encode("financeiro123"));
+        financeiro.setRole(Role.OPERADOR);
+        financeiro.setPermissoes(Set.of(Modulo.FINANCEIRO, Modulo.FORNECEDORES));
+        usuarioRepository.save(financeiro);
+    }
+
+    /** Conversa de exemplo: a produção pede ao financeiro a compra de mais peças para o estoque. */
+    private void seedMensagens() {
+        if (mensagemRepository.count() > 0) {
+            return;
+        }
+        Usuario operador = usuarioRepository.findByUsername("operador").orElse(null);
+        Usuario financeiro = usuarioRepository.findByUsername("financeiro").orElse(null);
+        if (operador == null || financeiro == null) {
+            return;
+        }
+        LocalDateTime agora = LocalDateTime.now();
+        mensagem(operador, financeiro, "Bom dia! O estoque de DCMT está ficando baixo para a próxima ordem de produção. "
+                + "Dá para comprar mais 50 unidades?", agora.minusMinutes(40), true);
+        mensagem(financeiro, operador, "Bom dia! Vou consultar os fornecedores e te aviso o prazo de entrega.",
+                agora.minusMinutes(25), true);
+        mensagem(financeiro, operador,
+                "Consegui com a Distribuidora: chega na quinta. Pode dar a entrada no sistema quando receber.",
+                agora.minusMinutes(5), false);
+    }
+
+    private void mensagem(Usuario de, Usuario para, String texto, LocalDateTime dataHora, boolean lida) {
+        Mensagem m = new Mensagem();
+        m.setRemetente(de);
+        m.setDestinatario(para);
+        m.setTexto(texto);
+        m.setDataHora(dataHora);
+        m.setLida(lida);
+        mensagemRepository.save(m);
     }
 
     private void seedFornecedores() {

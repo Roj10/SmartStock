@@ -6,6 +6,7 @@ target/
 
 ### Uploads (imagens enviadas em tempo de execução) ###
 uploads/
+uploads-privado/
 
 ### STS ###
 .apt_generated

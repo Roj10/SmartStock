@@ -136,6 +136,9 @@ public class ProjetoService {
 
     public Projeto atualizarChecklistItem(Long projetoId, Long itemId, boolean concluido) {
         Projeto projeto = buscarPorId(projetoId);
+        if (projeto.getStatus() != StatusProjeto.EM_PRODUCAO) {
+            throw new BusinessException("As etapas do checklist só podem ser marcadas com o projeto Em produção.");
+        }
         ChecklistItem item = projeto.getChecklist().stream()
                 .filter(c -> c.getId().equals(itemId))
                 .findFirst()
@@ -157,13 +160,19 @@ public class ProjetoService {
         projeto.setDescricao(request.getDescricao());
         projeto.setCliente(request.getCliente());
 
+        // as etapas só podem ser marcadas enquanto o projeto está Em produção; nas demais colunas o estado atual é mantido
+        boolean podeMarcar = projeto.getStatus() == StatusProjeto.EM_PRODUCAO;
+        List<Boolean> concluidosAtuais = projeto.getChecklist().stream().map(ChecklistItem::isConcluido).toList();
+
         projeto.getChecklist().clear();
         int ordem = 0;
         for (ChecklistItemRequest itemRequest : request.getChecklist()) {
             ChecklistItem item = new ChecklistItem();
             item.setProjeto(projeto);
             item.setTexto(itemRequest.getTexto());
-            item.setConcluido(itemRequest.isConcluido());
+            item.setConcluido(podeMarcar
+                    ? itemRequest.isConcluido()
+                    : ordem < concluidosAtuais.size() && concluidosAtuais.get(ordem));
             item.setOrdem(ordem++);
             projeto.getChecklist().add(item);
         }

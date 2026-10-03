@@ -111,7 +111,7 @@ export default function Fornecedores() {
   }
 
   return (
-    <div>
+    <div className="pagina-fixa">
       <header className="page-header page-header-actions">
         <div>
           <h1>Fornecedores e fabricantes</h1>
@@ -124,13 +124,13 @@ export default function Fornecedores() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      <section className="panel">
+      <section className="panel painel-tabela">
         {loading ? (
           <p className="empty-state">Carregando...</p>
         ) : lista.length === 0 ? (
           <p className="empty-state">Nenhum fornecedor cadastrado ainda.</p>
         ) : (
-          <div className="table-scroll">
+          <div className="table-scroll rolavel">
             <table className="table">
               <thead>
                 <tr>

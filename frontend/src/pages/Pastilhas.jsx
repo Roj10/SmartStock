@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api/client';
+import ImagemDropzone from '../components/ImagemDropzone';
 import Modal from '../components/Modal';
+import VisualizadorImagem from '../components/VisualizadorImagem';
 
 const API_ORIGIN = 'http://localhost:8080';
 const EMPTY_FORM = { codigo: '', descricao: '', fabricanteId: '', estoqueMinimo: 0, quantidadeAtual: 0 };
@@ -8,6 +10,42 @@ const PALAVRAS_GALERIA = ['imagem', 'imagens'];
 
 function urlImagem(imagemUrl) {
   return imagemUrl ? `${API_ORIGIN}${imagemUrl}` : null;
+}
+
+// Barra de estoque: mostra a quantidade atual em relação ao dobro do mínimo (cheia = folga confortável).
+function percentualEstoque(p) {
+  const referencia = Math.max(p.estoqueMinimo * 2, 1);
+  return Math.max(4, Math.min(100, Math.round((p.quantidadeAtual / referencia) * 100)));
+}
+
+function IconeAcao({ nome }) {
+  const props = {
+    width: 15,
+    height: 15,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': true,
+  };
+  if (nome === 'editar') {
+    return (
+      <svg {...props}>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...props}>
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v5M14 11v5" />
+    </svg>
+  );
 }
 
 export default function Pastilhas() {
@@ -23,6 +61,7 @@ export default function Pastilhas() {
   const [formError, setFormError] = useState('');
   const [filtro, setFiltro] = useState('');
   const [destacado, setDestacado] = useState(null);
+  const [imagemAmpliada, setImagemAmpliada] = useState(null);
 
   const linhasRef = useRef(new Map());
 
@@ -126,6 +165,8 @@ export default function Pastilhas() {
     );
   }, [lista, termo, modoGaleria]);
 
+  const totalCriticas = useMemo(() => lista.filter((p) => p.abaixoDoMinimo).length, [lista]);
+
   const pastilhasComImagem = useMemo(() => lista.filter((p) => p.imagemUrl), [lista]);
 
   function irParaProduto(id) {
@@ -138,7 +179,7 @@ export default function Pastilhas() {
   }
 
   return (
-    <div>
+    <div className="pagina-fixa">
       <header className="page-header page-header-actions">
         <div>
           <h1>Pastilhas industriais</h1>
@@ -151,13 +192,28 @@ export default function Pastilhas() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      <section className="panel">
-        <input
-          className="search-input"
-          placeholder="Buscar por código, descrição, ou digite 'imagem' para ver a galeria..."
-          value={filtro}
-          onChange={(e) => setFiltro(e.target.value)}
-        />
+      <section className="panel painel-tabela">
+        <div className="tabela-barra">
+          <input
+            className="busca-tabela"
+            type="search"
+            placeholder="Buscar por código, descrição ou digite 'imagem'"
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+          />
+          {!loading && (
+            <div className="tabela-resumo">
+              <span className="badge badge-neutral">
+                {termo && !modoGaleria ? `${listaFiltrada.length} de ${lista.length}` : lista.length} pastilhas
+              </span>
+              {totalCriticas > 0 && (
+                <span className="badge badge-danger">
+                  {totalCriticas} {totalCriticas === 1 ? 'crítica' : 'críticas'}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
 
         {modoGaleria && (
           <div className="galeria-imagens">
@@ -179,18 +235,16 @@ export default function Pastilhas() {
         ) : listaFiltrada.length === 0 ? (
           <p className="empty-state">Nenhuma pastilha encontrada.</p>
         ) : (
-          <div className="table-scroll">
-            <table className="table">
+          <div className="table-scroll rolavel">
+            <table className="table tabela-pastilhas">
               <thead>
                 <tr>
                   <th>Imagem</th>
-                  <th>Código</th>
-                  <th>Descrição</th>
+                  <th>Pastilha</th>
                   <th>Fabricante</th>
-                  <th>Estoque atual</th>
-                  <th>Estoque mínimo</th>
+                  <th>Estoque</th>
                   <th>Situação</th>
-                  <th></th>
+                  <th className="acoes-coluna">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -201,34 +255,60 @@ export default function Pastilhas() {
                       if (el) linhasRef.current.set(p.id, el);
                       else linhasRef.current.delete(p.id);
                     }}
-                    className={destacado === p.id ? 'row-highlight' : ''}
+                    className={(destacado === p.id ? 'row-highlight ' : '') + (p.abaixoDoMinimo ? 'critica' : '')}
                   >
-                    <td>
+                    <td className="col-imagem">
                       {p.imagemUrl ? (
-                        <img className="thumb" src={urlImagem(p.imagemUrl)} alt={p.codigo} />
+                        <button
+                          type="button"
+                          className="thumb-botao"
+                          title="Clique para ampliar"
+                          onClick={() => setImagemAmpliada(urlImagem(p.imagemUrl))}
+                        >
+                          <img className="thumb" src={urlImagem(p.imagemUrl)} alt={p.codigo} />
+                        </button>
                       ) : (
-                        <span className="thumb thumb-placeholder">—</span>
+                        <span className="thumb thumb-placeholder" title="Sem imagem">
+                          sem imagem
+                        </span>
                       )}
                     </td>
-                    <td>{p.codigo}</td>
-                    <td>{p.descricao}</td>
-                    <td>{p.fabricante?.nome ?? '-'}</td>
-                    <td>{p.quantidadeAtual}</td>
-                    <td>{p.estoqueMinimo}</td>
+                    <td className="col-produto">
+                      <strong>{p.codigo}</strong>
+                      <span>{p.descricao}</span>
+                    </td>
+                    <td className="col-fabricante">{p.fabricante?.nome ?? <span className="text-muted">-</span>}</td>
+                    <td className="col-estoque">
+                      <div className="estoque-valor">
+                        <strong className={p.abaixoDoMinimo ? 'critico' : ''}>{p.quantidadeAtual}</strong>
+                        <small>un.</small>
+                      </div>
+                      <div
+                        className={'estoque-barra' + (p.abaixoDoMinimo ? ' critico' : '')}
+                        title={`${p.quantidadeAtual} em estoque · mínimo ${p.estoqueMinimo}`}
+                      >
+                        <span style={{ width: `${percentualEstoque(p)}%` }} />
+                      </div>
+                      <small className="estoque-minimo">mínimo: {p.estoqueMinimo}</small>
+                    </td>
                     <td>
                       {p.abaixoDoMinimo ? (
-                        <span className="badge badge-danger">Estoque crítico</span>
+                        <span className="badge badge-danger badge-ponto">Estoque crítico</span>
                       ) : (
-                        <span className="badge badge-success">Normal</span>
+                        <span className="badge badge-success badge-ponto">Normal</span>
                       )}
                     </td>
-                    <td className="table-actions">
-                      <button className="btn-link" onClick={() => abrirEdicao(p)}>
-                        Editar
-                      </button>
-                      <button className="btn-link btn-link-danger" onClick={() => excluir(p)}>
-                        Excluir
-                      </button>
+                    <td className="acoes-coluna">
+                      <div className="acoes-linha">
+                        <button type="button" className="btn-acao" onClick={() => abrirEdicao(p)}>
+                          <IconeAcao nome="editar" />
+                          Editar
+                        </button>
+                        <button type="button" className="btn-acao btn-acao-perigo" onClick={() => excluir(p)}>
+                          <IconeAcao nome="excluir" />
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -241,36 +321,40 @@ export default function Pastilhas() {
       {modalAberto && (
         <Modal title={editando ? 'Editar pastilha' : 'Nova pastilha'} onClose={() => setModalAberto(false)}>
           <form onSubmit={salvar} className="form">
-            <label>
-              Código
-              <input
-                value={form.codigo}
-                onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                required
-                autoFocus
-              />
-            </label>
+            <div className="form-row">
+              <label>
+                Código
+                <input
+                  value={form.codigo}
+                  onChange={(e) => setForm({ ...form, codigo: e.target.value })}
+                  placeholder="Ex: CNMG120408"
+                  required
+                  autoFocus
+                />
+              </label>
+              <label>
+                Fabricante
+                <select
+                  value={form.fabricanteId}
+                  onChange={(e) => setForm({ ...form, fabricanteId: e.target.value })}
+                >
+                  <option value="">Não informado</option>
+                  {fornecedores.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <label>
               Descrição
               <input
                 value={form.descricao}
                 onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                placeholder="Ex: Pastilha de torneamento"
                 required
               />
-            </label>
-            <label>
-              Fabricante
-              <select
-                value={form.fabricanteId}
-                onChange={(e) => setForm({ ...form, fabricanteId: e.target.value })}
-              >
-                <option value="">Não informado</option>
-                {fornecedores.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.nome}
-                  </option>
-                ))}
-              </select>
             </label>
             <div className="form-row">
               <label>
@@ -282,32 +366,25 @@ export default function Pastilhas() {
                   onChange={(e) => setForm({ ...form, estoqueMinimo: e.target.value })}
                   required
                 />
+                <span className="campo-ajuda">Abaixo disso o estoque fica crítico</span>
               </label>
               <label>
-                Estoque atual {editando && <small>(ajuste manual)</small>}
+                Estoque atual
                 <input
                   type="number"
                   min="0"
                   value={form.quantidadeAtual}
                   onChange={(e) => setForm({ ...form, quantidadeAtual: e.target.value })}
-                  disabled={!editando}
+                  required
                 />
+                <span className="campo-ajuda">{editando ? 'Ajuste manual' : 'Estoque inicial'}</span>
               </label>
             </div>
-            {!editando && (
-              <p className="form-hint">
-                Para pastilhas novas, use as telas de Movimentações para registrar a entrada inicial de estoque.
-              </p>
-            )}
 
-            <label>
-              Imagem do produto
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(e) => setArquivoImagem(e.target.files?.[0] ?? null)}
-              />
-            </label>
+            <div className="campo-imagem">
+              <span className="campo-imagem-titulo">Imagem do produto</span>
+              <ImagemDropzone arquivo={arquivoImagem} onChange={setArquivoImagem} onErro={setFormError} />
+            </div>
             {editando?.imagemUrl && !arquivoImagem && (
               <div className="imagem-atual">
                 <img src={urlImagem(editando.imagemUrl)} alt={editando.codigo} />
@@ -330,6 +407,8 @@ export default function Pastilhas() {
           </form>
         </Modal>
       )}
+
+      {imagemAmpliada && <VisualizadorImagem src={imagemAmpliada} onFechar={() => setImagemAmpliada(null)} />}
     </div>
   );
 }

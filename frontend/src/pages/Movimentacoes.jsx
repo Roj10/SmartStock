@@ -4,6 +4,13 @@ import Modal from '../components/Modal';
 
 const EMPTY_FORM = { pastilhaId: '', quantidade: 1, fornecedorId: '', observacao: '' };
 
+const LIMITE_VISIVEL = 30;
+
+const COLUNAS = [
+  { tipo: 'ENTRADA', titulo: 'Entradas', badge: 'badge-success', vazio: 'Nenhuma entrada registrada ainda.' },
+  { tipo: 'SAIDA', titulo: 'Saídas', badge: 'badge-warning', vazio: 'Nenhuma saída registrada ainda.' },
+];
+
 function novaLinha(fornecedorId = '') {
   return { pastilhaId: '', quantidade: 1, fornecedorId };
 }
@@ -102,7 +109,7 @@ export default function Movimentacoes() {
   }
 
   return (
-    <div>
+    <div className="pagina-fixa">
       <header className="page-header page-header-actions">
         <div>
           <h1>Movimentações de estoque</h1>
@@ -120,48 +127,61 @@ export default function Movimentacoes() {
 
       {error && <div className="alert alert-error">{error}</div>}
 
-      <section className="panel">
-        {loading ? (
+      {loading ? (
+        <section className="panel">
           <p className="empty-state">Carregando...</p>
-        ) : lista.length === 0 ? (
-          <p className="empty-state">Nenhuma movimentação registrada ainda.</p>
-        ) : (
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Pastilha</th>
-                  <th>Tipo</th>
-                  <th>Quantidade</th>
-                  <th>Fornecedor</th>
-                  <th>Usuário</th>
-                  <th>Observação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lista.map((m) => (
-                  <tr key={m.id}>
-                    <td>{new Date(m.dataHora).toLocaleString('pt-BR')}</td>
-                    <td>
-                      {m.pastilha?.codigo} <small>{m.pastilha?.descricao}</small>
-                    </td>
-                    <td>
-                      <span className={`badge ${m.tipo === 'ENTRADA' ? 'badge-success' : 'badge-warning'}`}>
-                        {m.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'}
-                      </span>
-                    </td>
-                    <td>{m.quantidade}</td>
-                    <td>{m.fornecedor?.nome ?? '-'}</td>
-                    <td>{m.usuario?.nome ?? '-'}</td>
-                    <td>{m.observacao ?? '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+        </section>
+      ) : (
+        <div className="mov-colunas">
+          {COLUNAS.map((col) => {
+            const itens = lista.filter((m) => m.tipo === col.tipo);
+            return (
+              <section key={col.tipo} className="panel mov-coluna">
+                <div className="mov-coluna-header">
+                  <h2>
+                    <span className={`badge ${col.badge}`}>{col.titulo}</span>
+                  </h2>
+                  <small className="text-muted">
+                    {itens.length > LIMITE_VISIVEL
+                      ? `Mostrando as ${LIMITE_VISIVEL} mais recentes de ${itens.length}`
+                      : `${itens.length} registro(s)`}
+                  </small>
+                </div>
+                {itens.length === 0 ? (
+                  <p className="empty-state">{col.vazio}</p>
+                ) : (
+                  <div className="table-scroll rolavel">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Data</th>
+                          <th>Pastilha</th>
+                          <th>Qtd.</th>
+                          <th>{col.tipo === 'ENTRADA' ? 'Fornecedor' : 'Usuário'}</th>
+                          <th>Observação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {itens.slice(0, LIMITE_VISIVEL).map((m) => (
+                          <tr key={m.id}>
+                            <td>{new Date(m.dataHora).toLocaleString('pt-BR')}</td>
+                            <td>
+                              {m.pastilha?.codigo} <small>{m.pastilha?.descricao}</small>
+                            </td>
+                            <td>{m.quantidade}</td>
+                            <td>{col.tipo === 'ENTRADA' ? (m.fornecedor?.nome ?? '-') : (m.usuario?.nome ?? '-')}</td>
+                            <td>{m.observacao ?? '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       {modalTipo && (
         <Modal

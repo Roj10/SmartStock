@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';
 import StatCard from '../components/StatCard';
+import VisualizadorImagem from '../components/VisualizadorImagem';
 import { dataBr, moeda, urlImagem } from '../utils/format';
 
 const ABAS = [
@@ -50,6 +51,7 @@ export default function Financeiro() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [salvando, setSalvando] = useState(false);
   const [formError, setFormError] = useState('');
+  const [imagemAmpliada, setImagemAmpliada] = useState(null);
 
   function carregar() {
     setLoading(true);
@@ -156,7 +158,7 @@ export default function Financeiro() {
 
   function tabelaVendas(lista, tipo) {
     return (
-      <div className="table-scroll">
+      <div className="table-scroll rolavel">
         <table className="table">
           <thead>
             <tr>
@@ -208,7 +210,7 @@ export default function Financeiro() {
   }
 
   return (
-    <div>
+    <div className="pagina-fixa">
       <header className="page-header page-header-actions">
         <div>
           <h1>Financeiro</h1>
@@ -254,7 +256,7 @@ export default function Financeiro() {
       ) : (
         <>
           {aba === 'pecas' && (
-            <section className="panel">
+            <section className="panel painel-tabela">
               <input
                 className="search-input"
                 placeholder="Buscar por código, descrição ou fornecedor..."
@@ -264,7 +266,7 @@ export default function Financeiro() {
               {pecasFiltradas.length === 0 ? (
                 <p className="empty-state">Nenhuma peça encontrada.</p>
               ) : (
-                <div className="table-scroll">
+                <div className="table-scroll rolavel">
                   <table className="table">
                     <thead>
                       <tr>
@@ -282,7 +284,14 @@ export default function Financeiro() {
                         <tr key={p.id}>
                           <td>
                             {p.imagemUrl ? (
-                              <img className="thumb" src={urlImagem(p.imagemUrl)} alt={p.codigo} />
+                              <button
+                                type="button"
+                                className="thumb-botao"
+                                title="Clique para ampliar"
+                                onClick={() => setImagemAmpliada(urlImagem(p.imagemUrl))}
+                              >
+                                <img className="thumb" src={urlImagem(p.imagemUrl)} alt={p.codigo} />
+                              </button>
                             ) : (
                               <span className="thumb thumb-placeholder">—</span>
                             )}
@@ -321,8 +330,8 @@ export default function Financeiro() {
           )}
 
           {aba === 'vendas' && (
-            <>
-              <section className="panel secao">
+            <div className="paineis-empilhados">
+              <section className="panel secao painel-tabela">
                 <h2>Planos feitos para clientes ({planos.length})</h2>
                 {planos.length === 0 ? (
                   <p className="empty-state">Nenhum plano em aberto.</p>
@@ -330,7 +339,7 @@ export default function Financeiro() {
                   tabelaVendas(planos, 'PLANO')
                 )}
               </section>
-              <section className="panel secao">
+              <section className="panel secao painel-tabela">
                 <h2>Vendas ({fechadas.length})</h2>
                 {fechadas.length === 0 ? (
                   <p className="empty-state">Nenhuma venda fechada ainda.</p>
@@ -338,15 +347,15 @@ export default function Financeiro() {
                   tabelaVendas(fechadas, 'VENDA')
                 )}
               </section>
-            </>
+            </div>
           )}
 
           {aba === 'projetos' && (
-            <section className="panel">
+            <section className="panel painel-tabela">
               {projetos.length === 0 ? (
                 <p className="empty-state">Nenhum projeto cadastrado.</p>
               ) : (
-                <div className="table-scroll">
+                <div className="table-scroll rolavel">
                   <table className="table">
                     <thead>
                       <tr>
@@ -448,6 +457,8 @@ export default function Financeiro() {
           </form>
         </Modal>
       )}
+
+      {imagemAmpliada && <VisualizadorImagem src={imagemAmpliada} onFechar={() => setImagemAmpliada(null)} />}
     </div>
   );
 }
