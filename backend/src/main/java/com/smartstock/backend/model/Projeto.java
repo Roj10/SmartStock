@@ -32,6 +32,8 @@ public class Projeto {
 
     private String descricao;
 
+    private String cliente;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private StatusProjeto status = StatusProjeto.AGUARDANDO;
@@ -78,6 +80,14 @@ public class Projeto {
 
     public void setDescricao(String descricao) {
         this.descricao = descricao;
+    }
+
+    public String getCliente() {
+        return cliente;
+    }
+
+    public void setCliente(String cliente) {
+        this.cliente = cliente;
     }
 
     public StatusProjeto getStatus() {

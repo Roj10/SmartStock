@@ -2,7 +2,38 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';
 
-const EMPTY_FORM = { nome: '', descricao: '', checklist: [], materiais: [] };
+const EMPTY_FORM = { nome: '', descricao: '', cliente: '', checklist: [], materiais: [] };
+
+const ETAPAS = [
+  {
+    status: 'AGUARDANDO',
+    titulo: 'Aguardando início',
+    ajuda: 'Na fila. Clique em "Iniciar produção" para começar.',
+    vazio: 'Nenhum projeto aguardando.',
+  },
+  {
+    status: 'EM_PRODUCAO',
+    titulo: 'Em produção',
+    ajuda: 'Lista do que deve ser feito no projeto.',
+    vazio: 'Nenhum projeto em produção.',
+  },
+  {
+    status: 'EM_ESTOQUE',
+    titulo: 'Em estoque',
+    ajuda: 'Projeto feito que ainda não saiu.',
+    vazio: 'Nenhum projeto em estoque.',
+  },
+  {
+    status: 'PRONTO_ENTREGA',
+    titulo: 'Pronto para entrega',
+    ajuda: 'Informe o cliente e envie o pedido.',
+    vazio: 'Nenhum projeto pronto.',
+  },
+];
+
+function numeroOrdem(id) {
+  return `OP-${String(id).padStart(3, '0')}`;
+}
 
 function novoItemChecklist() {
   return { texto: '', concluido: false };
@@ -22,6 +53,8 @@ export default function Progresso() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [salvando, setSalvando] = useState(false);
   const [formError, setFormError] = useState('');
+  const [clientes, setClientes] = useState({});
+  const [metas, setMetas] = useState({});
 
   function carregar() {
     setLoading(true);
@@ -38,7 +71,7 @@ export default function Progresso() {
 
   function abrirNovo() {
     setEditando(null);
-    setForm({ nome: '', descricao: '', checklist: [novoItemChecklist()], materiais: [] });
+    setForm({ ...EMPTY_FORM, checklist: [novoItemChecklist()] });
     setFormError('');
     setModalAberto(true);
   }
@@ -48,6 +81,7 @@ export default function Progresso() {
     setForm({
       nome: p.nome,
       descricao: p.descricao ?? '',
+      cliente: p.cliente ?? '',
       checklist: p.checklist.map((c) => ({ texto: c.texto, concluido: c.concluido })),
       materiais: p.materiais.map((m) => ({ pastilhaId: String(m.pastilha.id), quantidade: m.quantidade })),
     });
@@ -86,6 +120,7 @@ export default function Progresso() {
     const payload = {
       nome: form.nome,
       descricao: form.descricao,
+      cliente: form.cliente,
       checklist: form.checklist
         .filter((c) => c.texto.trim())
         .map((c) => ({ texto: c.texto.trim(), concluido: c.concluido })),
@@ -126,6 +161,34 @@ export default function Progresso() {
     }
   }
 
+  function concluirProducao(projeto) {
+    if (projeto.concluidosChecklist < projeto.totalChecklist) {
+      const pendentes = projeto.totalChecklist - projeto.concluidosChecklist;
+      if (!window.confirm(`Ainda há ${pendentes} etapa(s) pendente(s) no checklist. Concluir a produção mesmo assim?`)) {
+        return;
+      }
+    }
+    moverStatus(projeto, 'EM_ESTOQUE');
+  }
+
+  async function enviarPedido(projeto) {
+    const cliente = (clientes[projeto.id] ?? projeto.cliente ?? '').trim();
+    if (!cliente) {
+      alert('Informe o nome do cliente para enviar o pedido.');
+      return;
+    }
+    if (!window.confirm(`Enviar o pedido "${projeto.nome}" para ${cliente}?`)) return;
+    try {
+      await api.post(`/projetos/${projeto.id}/enviar-pedido`, {
+        cliente,
+        metaEntrega: metas[projeto.id] || null,
+      });
+      carregar();
+    } catch (err) {
+      alert(err.response?.data?.message ?? 'Não foi possível enviar o pedido.');
+    }
+  }
+
   async function excluir(p) {
     if (!window.confirm(`Excluir o projeto "${p.nome}"?`)) return;
     try {
@@ -136,15 +199,17 @@ export default function Progresso() {
     }
   }
 
-  const aguardando = projetos.filter((p) => p.status === 'AGUARDANDO');
-  const emProducao = projetos.filter((p) => p.status === 'EM_PRODUCAO');
-
-  function renderCard(projeto, coluna) {
+  function renderCard(projeto, indice) {
+    const ultima = indice === ETAPAS.length - 1;
+    const mostrarChecklist = indice <= 1;
     return (
       <div key={projeto.id} className="kanban-card">
         <div className="kanban-card-header">
-          <strong>{projeto.nome}</strong>
-          <span className="checklist-progress">
+          <div className="kanban-card-titulo">
+            <span className="op-badge">{numeroOrdem(projeto.id)}</span>
+            <strong>{projeto.nome}</strong>
+          </div>
+          <span className="checklist-progress" title="Etapas do checklist concluídas">
             {projeto.concluidosChecklist}/{projeto.totalChecklist}
           </span>
         </div>
@@ -164,7 +229,7 @@ export default function Progresso() {
           </div>
         )}
 
-        {projeto.checklist.length > 0 && (
+        {mostrarChecklist && projeto.checklist.length > 0 && (
           <ul className="kanban-checklist">
             {projeto.checklist.map((item) => (
               <li key={item.id}>
@@ -181,6 +246,27 @@ export default function Progresso() {
           </ul>
         )}
 
+        {ultima && (
+          <div className="kanban-envio">
+            <label>
+              Cliente
+              <input
+                value={clientes[projeto.id] ?? projeto.cliente ?? ''}
+                onChange={(e) => setClientes((c) => ({ ...c, [projeto.id]: e.target.value }))}
+                placeholder="Nome do cliente"
+              />
+            </label>
+            <label>
+              Meta de entrega (opcional)
+              <input
+                type="date"
+                value={metas[projeto.id] ?? projeto.metaEntrega ?? ''}
+                onChange={(e) => setMetas((m) => ({ ...m, [projeto.id]: e.target.value }))}
+              />
+            </label>
+          </div>
+        )}
+
         <div className="kanban-card-actions">
           <button className="btn-link" onClick={() => abrirEdicao(projeto)}>
             Editar
@@ -189,20 +275,30 @@ export default function Progresso() {
             Excluir
           </button>
           <span className="spacer" />
-          {coluna === 'AGUARDANDO' && (
-            <button className="btn btn-primary btn-sm" onClick={() => moverStatus(projeto, 'EM_PRODUCAO')}>
+          {indice > 0 && (
+            <button className="btn btn-ghost btn-sm" onClick={() => moverStatus(projeto, ETAPAS[indice - 1].status)}>
+              ← Voltar
+            </button>
+          )}
+          {indice === 0 && (
+            <button className="btn btn-primary btn-sm" onClick={() => moverStatus(projeto, ETAPAS[1].status)}>
               Iniciar produção →
             </button>
           )}
-          {coluna === 'EM_PRODUCAO' && (
-            <>
-              <button className="btn btn-ghost btn-sm" onClick={() => moverStatus(projeto, 'AGUARDANDO')}>
-                ← Voltar
-              </button>
-              <button className="btn btn-success btn-sm" onClick={() => moverStatus(projeto, 'FINALIZADO')}>
-                Finalizar produção →
-              </button>
-            </>
+          {indice === 1 && (
+            <button className="btn btn-success btn-sm" onClick={() => concluirProducao(projeto)}>
+              Concluir produção →
+            </button>
+          )}
+          {indice === 2 && (
+            <button className="btn btn-success btn-sm" onClick={() => moverStatus(projeto, ETAPAS[3].status)}>
+              Liberar para entrega →
+            </button>
+          )}
+          {ultima && (
+            <button className="btn btn-primary btn-sm" onClick={() => enviarPedido(projeto)}>
+              Enviar pedido →
+            </button>
           )}
         </div>
       </div>
@@ -214,7 +310,10 @@ export default function Progresso() {
       <header className="page-header page-header-actions">
         <div>
           <h1>Progresso de produção</h1>
-          <p>Projetos aguardando início e em produção, com checklist de etapas e materiais necessários.</p>
+          <p>
+            Ordem de produção em sequência: cada projeto avança etapa por etapa até o envio do pedido ao cliente.
+            Os mais antigos ficam no topo da fila.
+          </p>
         </div>
         <button className="btn btn-primary" onClick={abrirNovo}>
           + Novo projeto
@@ -227,23 +326,23 @@ export default function Progresso() {
         <p className="empty-state">Carregando...</p>
       ) : (
         <div className="kanban-board">
-          <section className="kanban-column">
-            <h2>Aguardando início ({aguardando.length})</h2>
-            {aguardando.length === 0 ? (
-              <p className="empty-state">Nenhum projeto aguardando.</p>
-            ) : (
-              aguardando.map((p) => renderCard(p, 'AGUARDANDO'))
-            )}
-          </section>
-
-          <section className="kanban-column">
-            <h2>Em produção ({emProducao.length})</h2>
-            {emProducao.length === 0 ? (
-              <p className="empty-state">Nenhum projeto em produção.</p>
-            ) : (
-              emProducao.map((p) => renderCard(p, 'EM_PRODUCAO'))
-            )}
-          </section>
+          {ETAPAS.map((etapa, indice) => {
+            const doStatus = projetos.filter((p) => p.status === etapa.status);
+            return (
+              <section key={etapa.status} className="kanban-column">
+                <h2>
+                  <span className="etapa-num">{indice + 1}</span>
+                  {etapa.titulo} <small>({doStatus.length})</small>
+                </h2>
+                <p className="etapa-ajuda">{etapa.ajuda}</p>
+                {doStatus.length === 0 ? (
+                  <p className="empty-state">{etapa.vazio}</p>
+                ) : (
+                  doStatus.map((p) => renderCard(p, indice))
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
 
@@ -265,6 +364,14 @@ export default function Progresso() {
               <input
                 value={form.descricao}
                 onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+              />
+            </label>
+            <label>
+              Cliente (opcional)
+              <input
+                value={form.cliente}
+                onChange={(e) => setForm({ ...form, cliente: e.target.value })}
+                placeholder="Pode ser preenchido depois, ao enviar o pedido"
               />
             </label>
 

@@ -189,10 +189,32 @@ public class DataSeeder implements CommandLineRunner {
                 new String[] { "Separar materiais", "Corte e furação", "Montagem", "Acabamento" }, 0);
         projetoRepository.save(suporteIndustrial);
 
+        Projeto portao = new Projeto();
+        portao.setNome("Portão basculante - Cliente JKL");
+        portao.setDescricao("Portão basculante pronto, aguardando a retirada.");
+        portao.setStatus(StatusProjeto.EM_ESTOQUE);
+        portao.setDataCriacao(LocalDateTime.now().minusDays(7));
+        portao.setDataInicioProducao(LocalDateTime.now().minusDays(6));
+        portao.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(2));
+        adicionarChecklist(portao, new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
+        projetoRepository.save(portao);
+
+        Projeto escada = new Projeto();
+        escada.setNome("Escada marinheiro - Cliente MNO");
+        escada.setDescricao("Escada de acesso ao reservatório, liberada para entrega.");
+        escada.setStatus(StatusProjeto.PRONTO_ENTREGA);
+        escada.setCliente("Cliente MNO");
+        escada.setDataCriacao(LocalDateTime.now().minusDays(8));
+        escada.setDataInicioProducao(LocalDateTime.now().minusDays(7));
+        escada.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(3));
+        adicionarChecklist(escada, new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
+        projetoRepository.save(escada);
+
         Projeto baseEsteira = new Projeto();
         baseEsteira.setNome("Base para esteira - Cliente DEF");
         baseEsteira.setDescricao("Base de sustentação para esteira transportadora.");
-        baseEsteira.setStatus(StatusProjeto.FINALIZADO);
+        baseEsteira.setStatus(StatusProjeto.PEDIDO_ENVIADO);
+        baseEsteira.setCliente("Cliente DEF");
         baseEsteira.setDataCriacao(LocalDateTime.now().minusDays(10));
         baseEsteira.setDataInicioProducao(LocalDateTime.now().minusDays(9));
         baseEsteira.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(1));
@@ -206,6 +228,7 @@ public class DataSeeder implements CommandLineRunner {
         gradeProtecao.setNome("Grade de proteção - Cliente GHI");
         gradeProtecao.setDescricao("Grade de proteção para máquina industrial.");
         gradeProtecao.setStatus(StatusProjeto.ENTREGUE);
+        gradeProtecao.setCliente("Cliente GHI");
         gradeProtecao.setDataCriacao(LocalDateTime.now().minusDays(20));
         gradeProtecao.setDataInicioProducao(LocalDateTime.now().minusDays(19));
         gradeProtecao.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(15));

@@ -13,6 +13,8 @@ public class ProjetoRequest {
 
     private String descricao;
 
+    private String cliente;
+
     @Valid
     private List<ChecklistItemRequest> checklist = new ArrayList<>();
 
@@ -33,6 +35,14 @@ public class ProjetoRequest {
 
     public void setDescricao(String descricao) {
         this.descricao = descricao;
+    }
+
+    public String getCliente() {
+        return cliente;
+    }
+
+    public void setCliente(String cliente) {
+        this.cliente = cliente;
     }
 
     public List<ChecklistItemRequest> getChecklist() {

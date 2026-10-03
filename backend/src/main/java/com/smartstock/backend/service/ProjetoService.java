@@ -1,5 +1,6 @@
 package com.smartstock.backend.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.smartstock.backend.dto.CalendarioUpdateRequest;
 import com.smartstock.backend.dto.ChecklistItemRequest;
+import com.smartstock.backend.dto.EnviarPedidoRequest;
 import com.smartstock.backend.dto.ProjetoMaterialRequest;
 import com.smartstock.backend.dto.ProjetoRequest;
 import com.smartstock.backend.exception.BusinessException;
@@ -23,9 +25,6 @@ import com.smartstock.backend.repository.ProjetoRepository;
 @Service
 public class ProjetoService {
 
-    private static final List<StatusProjeto> STATUS_PROGRESSO = List.of(StatusProjeto.AGUARDANDO, StatusProjeto.EM_PRODUCAO);
-    private static final List<StatusProjeto> STATUS_CALENDARIO = List.of(StatusProjeto.FINALIZADO, StatusProjeto.ENTREGUE);
-
     private final ProjetoRepository projetoRepository;
     private final PastilhaRepository pastilhaRepository;
 
@@ -35,11 +34,11 @@ public class ProjetoService {
     }
 
     public List<Projeto> listarProgresso() {
-        return projetoRepository.findByStatusInOrderByDataCriacaoDesc(STATUS_PROGRESSO);
+        return projetoRepository.findByStatusInOrderByDataCriacaoAscIdAsc(StatusProjeto.ETAPAS_PROGRESSO);
     }
 
     public List<Projeto> listarCalendario() {
-        return projetoRepository.findByStatusInOrderByDataCriacaoDesc(STATUS_CALENDARIO);
+        return projetoRepository.findByStatusInOrderByDataCriacaoDesc(StatusProjeto.ETAPAS_CALENDARIO);
     }
 
     public Projeto buscarPorId(Long id) {
@@ -61,21 +60,32 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    /**
+     * Move o projeto uma etapa para frente ou para trás na ordem de produção:
+     * Aguardando início → Em produção → Em estoque → Pronto para entrega.
+     * O envio do pedido (e a entrega) têm ações próprias.
+     */
     public Projeto atualizarStatus(Long id, StatusProjeto novoStatus) {
         Projeto projeto = buscarPorId(id);
+        StatusProjeto atual = projeto.getStatus();
 
+        if (!atual.estaNoProgresso()) {
+            throw new BusinessException("Este pedido já foi enviado e não volta para o quadro de produção.");
+        }
+        if (novoStatus == StatusProjeto.PEDIDO_ENVIADO) {
+            throw new BusinessException("Use a ação \"Enviar pedido\" na coluna Pronto para entrega.");
+        }
         if (novoStatus == StatusProjeto.ENTREGUE) {
             throw new BusinessException("Use a ação \"Marcar como entregue\" na aba Calendário para concluir o pedido.");
         }
-
-        if (projeto.getStatus() == StatusProjeto.ENTREGUE) {
-            throw new BusinessException("Este projeto já foi entregue e não pode voltar de status.");
+        if (Math.abs(novoStatus.ordinal() - atual.ordinal()) != 1) {
+            throw new BusinessException("A ordem de produção deve ser seguida etapa por etapa.");
         }
 
         if (novoStatus == StatusProjeto.EM_PRODUCAO && projeto.getDataInicioProducao() == null) {
             projeto.setDataInicioProducao(LocalDateTime.now());
         }
-        if (novoStatus == StatusProjeto.FINALIZADO) {
+        if (novoStatus == StatusProjeto.EM_ESTOQUE) {
             projeto.setDataFinalizacaoProducao(LocalDateTime.now());
         }
 
@@ -83,10 +93,24 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    public Projeto enviarPedido(Long id, EnviarPedidoRequest request) {
+        Projeto projeto = buscarPorId(id);
+        if (projeto.getStatus() != StatusProjeto.PRONTO_ENTREGA) {
+            throw new BusinessException("Apenas projetos na coluna Pronto para entrega podem ter o pedido enviado.");
+        }
+        projeto.setCliente(request.getCliente().trim());
+        projeto.setDataPedido(LocalDate.now());
+        if (request.getMetaEntrega() != null) {
+            projeto.setMetaEntrega(request.getMetaEntrega());
+        }
+        projeto.setStatus(StatusProjeto.PEDIDO_ENVIADO);
+        return projetoRepository.save(projeto);
+    }
+
     public Projeto marcarComoEntregue(Long id) {
         Projeto projeto = buscarPorId(id);
-        if (projeto.getStatus() != StatusProjeto.FINALIZADO) {
-            throw new BusinessException("Apenas projetos finalizados podem ser marcados como entregues.");
+        if (projeto.getStatus() != StatusProjeto.PEDIDO_ENVIADO) {
+            throw new BusinessException("Apenas pedidos enviados podem ser marcados como entregues.");
         }
         projeto.setStatus(StatusProjeto.ENTREGUE);
         projeto.setDataEntrega(LocalDateTime.now());
@@ -118,6 +142,7 @@ public class ProjetoService {
     private void aplicar(Projeto projeto, ProjetoRequest request) {
         projeto.setNome(request.getNome());
         projeto.setDescricao(request.getDescricao());
+        projeto.setCliente(request.getCliente());
 
         projeto.getChecklist().clear();
         int ordem = 0;

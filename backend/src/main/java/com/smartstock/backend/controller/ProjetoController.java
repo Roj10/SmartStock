@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.smartstock.backend.dto.CalendarioUpdateRequest;
 import com.smartstock.backend.dto.ChecklistToggleRequest;
+import com.smartstock.backend.dto.EnviarPedidoRequest;
 import com.smartstock.backend.dto.ProjetoRequest;
 import com.smartstock.backend.dto.StatusProjetoRequest;
 import com.smartstock.backend.model.Projeto;
@@ -61,6 +62,11 @@ public class ProjetoController {
     @PatchMapping("/{id}/status")
     public Projeto atualizarStatus(@PathVariable Long id, @Valid @RequestBody StatusProjetoRequest request) {
         return projetoService.atualizarStatus(id, request.getStatus());
+    }
+
+    @PostMapping("/{id}/enviar-pedido")
+    public Projeto enviarPedido(@PathVariable Long id, @Valid @RequestBody EnviarPedidoRequest request) {
+        return projetoService.enviarPedido(id, request);
     }
 
     @PostMapping("/{id}/entregar")

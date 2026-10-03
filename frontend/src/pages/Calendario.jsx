@@ -95,7 +95,7 @@ export default function Calendario() {
     }
   }
 
-  const pedidosAbertos = projetos.filter((p) => p.status === 'FINALIZADO');
+  const pedidosAbertos = projetos.filter((p) => p.status === 'PEDIDO_ENVIADO');
   const historicoEntregas = projetos
     .filter((p) => p.status === 'ENTREGUE')
     .sort((a, b) => new Date(b.dataEntrega) - new Date(a.dataEntrega));
@@ -125,7 +125,7 @@ export default function Calendario() {
     <div>
       <header className="page-header">
         <h1>Calendário de entregas</h1>
-        <p>Projetos finalizados aguardando entrega e histórico de entregas já realizadas.</p>
+        <p>Pedidos enviados aguardando entrega e histórico de entregas já realizadas.</p>
       </header>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -180,7 +180,7 @@ export default function Calendario() {
                     <span
                       key={i}
                       className={`calendario-evento ${ev.tipo === 'meta' ? 'evento-meta' : 'evento-entrega'}`}
-                      title={`${ev.tipo === 'meta' ? 'Meta de entrega' : 'Entregue'}: ${ev.projeto.nome}`}
+                      title={`${ev.tipo === 'meta' ? 'Meta de entrega' : 'Entregue'}: ${ev.projeto.nome}${ev.projeto.cliente ? ` (${ev.projeto.cliente})` : ''}`}
                     >
                       {ev.projeto.nome}
                     </span>
@@ -213,7 +213,10 @@ export default function Calendario() {
               pedidosAbertos.map((p) => (
                 <div key={p.id} className="pedido-card">
                   <div className="pedido-card-header">
-                    <strong>{p.nome}</strong>
+                    <div>
+                      <strong>{p.nome}</strong>
+                      {p.cliente && <small className="pedido-cliente">Cliente: {p.cliente}</small>}
+                    </div>
                     <button className="btn btn-success btn-sm" onClick={() => marcarEntregue(p.id)}>
                       Marcar como entregue
                     </button>
@@ -259,6 +262,7 @@ export default function Calendario() {
                   <thead>
                     <tr>
                       <th>Projeto</th>
+                      <th>Cliente</th>
                       <th>Pedido</th>
                       <th>Meta</th>
                       <th>Entregue em</th>
@@ -268,6 +272,7 @@ export default function Calendario() {
                     {historicoEntregas.map((p) => (
                       <tr key={p.id}>
                         <td>{p.nome}</td>
+                        <td>{p.cliente ?? '-'}</td>
                         <td>{formatarData(p.dataPedido)}</td>
                         <td>{formatarData(p.metaEntrega)}</td>
                         <td>{new Date(p.dataEntrega).toLocaleDateString('pt-BR')}</td>

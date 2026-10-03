@@ -59,13 +59,15 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
 - Consulta de estoque em tempo real e alertas de estoque abaixo do mínimo.
 - Histórico de movimentações.
 - Painel (dashboard) com indicadores gerais, adaptado às permissões de quem está logado.
-- **Progresso de produção:** quadro com projetos "Aguardando início" e "Em produção", cada um com checklist de
-  etapas editável (marcar/desmarcar, adicionar/remover itens) e lista de materiais necessários (vinculados ao
-  cadastro de Pastilhas, com aviso quando a quantidade necessária excede o estoque atual). Ao finalizar a
-  produção, o projeto sai do quadro e passa a aparecer na aba Calendário.
-- **Calendário de entregas:** projetos finalizados aguardando entrega ("pedidos em aberto", com data do pedido e
-  meta de entrega editáveis) e histórico de entregas já realizadas, além de uma visão de calendário mensal
-  marcando os dias com meta de entrega e com entregas concluídas.
+- **Progresso de produção:** ordem de produção em sequência, em 4 colunas — (1) Aguardando início, (2) Em produção
+  (checklist editável do que deve ser feito), (3) Em estoque (projeto pronto que ainda não saiu) e (4) Pronto para
+  entrega (informa-se o cliente e envia-se o pedido). Cada projeto tem um número de ordem (OP-001...), a fila mostra
+  os mais antigos primeiro e só é possível avançar ou voltar uma etapa por vez. Os materiais necessários são
+  vinculados ao cadastro de Pastilhas, com aviso quando a quantidade excede o estoque atual.
+- **Calendário de entregas:** ao enviar o pedido, o projeto passa para o Calendário com o nome do cliente e a data
+  do pedido preenchida automaticamente; a meta de entrega e a data do pedido continuam editáveis. Há ainda o botão
+  "Marcar como entregue", o histórico de entregas e um calendário mensal em que o dia inteiro fica colorido
+  (laranja = meta de entrega, verde = entregue) com os projetos listados dentro do dia.
 
 ## Próximos passos sugeridos
 

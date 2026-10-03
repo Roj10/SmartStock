@@ -757,9 +757,11 @@ h1, h2, h3 {
 
 .kanban-board {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  gap: 14px;
   align-items: start;
+  overflow-x: auto;
+  padding-bottom: 6px;
 }
 
 .kanban-column {
@@ -775,6 +777,82 @@ h1, h2, h3 {
 
 .kanban-column h2 {
   font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kanban-column h2 small {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.etapa-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.etapa-ajuda {
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.kanban-card-titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.op-badge {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  background: var(--info-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.kanban-envio {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+
+.kanban-envio label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.kanban-envio input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.pedido-cliente {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .kanban-card {
