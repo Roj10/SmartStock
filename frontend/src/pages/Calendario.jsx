@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api/client';
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -46,6 +46,13 @@ export default function Calendario() {
   const [error, setError] = useState('');
   const [edicoes, setEdicoes] = useState({});
   const [salvandoId, setSalvandoId] = useState(null);
+  // pedidos destacados ao clicar num dia do calendário (e o dia clicado)
+  const [destacados, setDestacados] = useState([]);
+  const [diaSelecionado, setDiaSelecionado] = useState(null);
+  const [pulso, setPulso] = useState(0);
+  const cartoesRef = useRef(new Map());
+  const linhasRef = useRef(new Map());
+  const timerRef = useRef(null);
   const [mesReferencia, setMesReferencia] = useState(() => {
     const hoje = new Date();
     return new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -68,6 +75,30 @@ export default function Calendario() {
   }
 
   useEffect(carregar, []);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  // Destaca os pedidos e rola a lista até o primeiro deles (em "Pedidos em aberto" ou, se já foi entregue, no histórico).
+  function destacar(ids, chaveDia) {
+    clearTimeout(timerRef.current);
+    setDestacados(ids);
+    setDiaSelecionado(chaveDia);
+    setPulso((n) => n + 1); // alterna a animação para ela recomeçar a cada clique
+    const primeiroAberto = ids.find((id) => cartoesRef.current.has(id));
+    const alvo =
+      cartoesRef.current.get(primeiroAberto) ?? linhasRef.current.get(ids.find((id) => linhasRef.current.has(id)));
+    alvo?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    timerRef.current = setTimeout(() => {
+      setDestacados([]);
+      setDiaSelecionado(null);
+    }, 4500);
+  }
+
+  function aoClicarDia(chave, eventos) {
+    const abertos = eventos.filter((e) => e.tipo === 'meta').map((e) => e.projeto.id);
+    const entregues = eventos.filter((e) => e.tipo === 'entrega').map((e) => e.projeto.id);
+    destacar([...abertos, ...entregues], chave);
+  }
 
   function atualizarEdicao(id, campo, valor) {
     setEdicoes((e) => ({ ...e, [id]: { ...e[id], [campo]: valor } }));
@@ -168,8 +199,24 @@ export default function Calendario() {
             return (
               <div
                 key={chave}
+                role={eventos.length ? 'button' : undefined}
+                tabIndex={eventos.length ? 0 : undefined}
+                title={eventos.length ? 'Clique para ver o pedido na lista ao lado' : undefined}
+                onClick={eventos.length ? () => aoClicarDia(chave, eventos) : undefined}
+                onKeyDown={
+                  eventos.length
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          aoClicarDia(chave, eventos);
+                        }
+                      }
+                    : undefined
+                }
                 className={
                   'calendario-cel' +
+                  (eventos.length ? ' clicavel' : '') +
+                  (diaSelecionado === chave ? ' selecionado' : '') +
                   (outroMes ? ' outro-mes' : '') +
                   (hoje ? ' hoje' : '') +
                   (temMeta && temEntrega ? ' ev-ambos' : temMeta ? ' ev-meta' : temEntrega ? ' ev-entrega' : '')
@@ -178,13 +225,18 @@ export default function Calendario() {
                 <span className="calendario-num">{dia.getDate()}</span>
                 <div className="calendario-eventos">
                   {eventos.map((ev, i) => (
-                    <span
+                    <button
+                      type="button"
                       key={i}
                       className={`calendario-evento ${ev.tipo === 'meta' ? 'evento-meta' : 'evento-entrega'}`}
                       title={`${ev.tipo === 'meta' ? 'Meta de entrega' : 'Entregue'}: ${ev.projeto.nome}${ev.projeto.cliente ? ` (${ev.projeto.cliente})` : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        destacar([ev.projeto.id], chave);
+                      }}
                     >
                       {ev.projeto.nome}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -212,45 +264,63 @@ export default function Calendario() {
               <p className="empty-state">Nenhum pedido aguardando entrega.</p>
             ) : (
               <div className="painel-rolavel-corpo">
-              {pedidosAbertos.map((p) => (
-                <div key={p.id} className="pedido-card">
-                  <div className="pedido-card-header">
-                    <div>
-                      <strong>{p.nome}</strong>
-                      {p.cliente && <small className="pedido-cliente">Cliente: {p.cliente}</small>}
+              {pedidosAbertos.map((p) => {
+                const edicao = edicoes[p.id] ?? {};
+                const alterado =
+                  (edicao.dataPedido ?? '') !== (p.dataPedido ?? '') || (edicao.metaEntrega ?? '') !== (p.metaEntrega ?? '');
+                const atrasado = p.metaEntrega && p.metaEntrega < paraChave(new Date());
+                return (
+                  <div
+                    key={p.id}
+                    ref={(el) => {
+                      if (el) cartoesRef.current.set(p.id, el);
+                      else cartoesRef.current.delete(p.id);
+                    }}
+                    className={'pedido-card' + (destacados.includes(p.id) ? ' destacado' + (pulso % 2 ? ' alt' : '') : '')}
+                  >
+                    <div className="pedido-card-header">
+                      <div className="pedido-card-titulo">
+                        <strong>{p.nome}</strong>
+                        <span className="pedido-card-sub">
+                          {p.cliente && <small className="pedido-cliente">Cliente: {p.cliente}</small>}
+                          {atrasado && <span className="badge badge-danger">Atrasado</span>}
+                        </span>
+                      </div>
+                      <button className="btn btn-success btn-sm" onClick={() => marcarEntregue(p.id)}>
+                        Marcar como entregue
+                      </button>
                     </div>
-                    <button className="btn btn-success btn-sm" onClick={() => marcarEntregue(p.id)}>
-                      Marcar como entregue
+
+                    <div className="pedido-datas">
+                      <label className="pedido-campo">
+                        <span>Data do pedido</span>
+                        <input
+                          type="date"
+                          value={edicao.dataPedido ?? ''}
+                          onChange={(e) => atualizarEdicao(p.id, 'dataPedido', e.target.value)}
+                        />
+                      </label>
+                      <label className="pedido-campo">
+                        <span>Meta de entrega</span>
+                        <input
+                          type="date"
+                          value={edicao.metaEntrega ?? ''}
+                          onChange={(e) => atualizarEdicao(p.id, 'metaEntrega', e.target.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={'btn btn-sm pedido-salvar ' + (alterado ? 'btn-primary' : 'btn-ghost')}
+                      disabled={!alterado || salvandoId === p.id}
+                      onClick={() => salvarDatas(p.id)}
+                    >
+                      {salvandoId === p.id ? 'Salvando...' : alterado ? 'Salvar datas' : 'Datas salvas'}
                     </button>
                   </div>
-                  <div className="form-row">
-                    <label>
-                      Data do pedido
-                      <input
-                        type="date"
-                        value={edicoes[p.id]?.dataPedido ?? ''}
-                        onChange={(e) => atualizarEdicao(p.id, 'dataPedido', e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Meta de entrega
-                      <input
-                        type="date"
-                        value={edicoes[p.id]?.metaEntrega ?? ''}
-                        onChange={(e) => atualizarEdicao(p.id, 'metaEntrega', e.target.value)}
-                      />
-                    </label>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    disabled={salvandoId === p.id}
-                    onClick={() => salvarDatas(p.id)}
-                  >
-                    {salvandoId === p.id ? 'Salvando...' : 'Salvar datas'}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
               </div>
             )}
           </section>
@@ -273,7 +343,14 @@ export default function Calendario() {
                   </thead>
                   <tbody>
                     {historicoEntregas.map((p) => (
-                      <tr key={p.id}>
+                      <tr
+                        key={p.id}
+                        ref={(el) => {
+                          if (el) linhasRef.current.set(p.id, el);
+                          else linhasRef.current.delete(p.id);
+                        }}
+                        className={destacados.includes(p.id) ? 'row-highlight' : ''}
+                      >
                         <td>{p.nome}</td>
                         <td>{p.cliente ?? '-'}</td>
                         <td>{formatarData(p.dataPedido)}</td>
