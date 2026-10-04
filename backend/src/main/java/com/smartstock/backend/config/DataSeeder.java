@@ -1,21 +1,16 @@
 package com.smartstock.backend.config;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-
-import javax.imageio.ImageIO;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -133,12 +128,12 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
         LocalDateTime agora = LocalDateTime.now();
-        mensagem(operador, financeiro, "Bom dia! O estoque de DCMT está ficando baixo para a próxima ordem de produção. "
-                + "Dá para comprar mais 50 unidades?", agora.minusMinutes(40), true);
+        mensagem(operador, financeiro, "Bom dia! O estoque de tinta esmalte está ficando baixo para a próxima ordem de produção. "
+                + "Dá para comprar mais 20 latas?", agora.minusMinutes(40), true);
         mensagem(financeiro, operador, "Bom dia! Vou consultar os fornecedores e te aviso o prazo de entrega.",
                 agora.minusMinutes(25), true);
         mensagem(financeiro, operador,
-                "Consegui com a Distribuidora: chega na quinta. Pode dar a entrada no sistema quando receber.",
+                "Consegui com a Tintas Serrana: chega na quinta. Pode dar a entrada no sistema quando receber.",
                 agora.minusMinutes(5), false);
     }
 
@@ -157,64 +152,64 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        Fornecedor sandvik = new Fornecedor();
-        sandvik.setNome("Sandvik Coromant");
-        sandvik.setTipo(TipoFornecedor.FABRICANTE);
-        sandvik.setContato("Com. Industrial");
-        sandvik.setTelefone("(47) 3333-1111");
-        sandvik.setEmail("contato@sandvik.example.com");
-        fornecedorRepository.save(sandvik);
-
-        Fornecedor mitsubishi = new Fornecedor();
-        mitsubishi.setNome("Mitsubishi Materials");
-        mitsubishi.setTipo(TipoFornecedor.FABRICANTE);
-        mitsubishi.setContato("Suporte Técnico");
-        mitsubishi.setTelefone("(47) 3333-2222");
-        mitsubishi.setEmail("contato@mitsubishi.example.com");
-        fornecedorRepository.save(mitsubishi);
-
-        Fornecedor distribuidora = new Fornecedor();
-        distribuidora.setNome("Distribuidora SC Ferramentas");
-        distribuidora.setTipo(TipoFornecedor.FORNECEDOR);
-        distribuidora.setContato("Vendas");
-        distribuidora.setTelefone("(49) 3222-4444");
-        distribuidora.setEmail("vendas@scferramentas.example.com");
-        fornecedorRepository.save(distribuidora);
+        criarFornecedor("Siderúrgica Planalto", TipoFornecedor.FABRICANTE, "Vendas de aço", "(47) 3333-1111",
+                "vendas@planalto.example.com");
+        criarFornecedor("Tintas Serrana", TipoFornecedor.FABRICANTE, "Atendimento ao cliente", "(47) 3333-2222",
+                "atendimento@serrana.example.com");
+        criarFornecedor("Ferragens Fraiburgo", TipoFornecedor.FORNECEDOR, "Vendas", "(49) 3222-4444",
+                "vendas@ferragensfraiburgo.example.com");
     }
 
+    private void criarFornecedor(String nome, TipoFornecedor tipo, String contato, String telefone, String email) {
+        Fornecedor fornecedor = new Fornecedor();
+        fornecedor.setNome(nome);
+        fornecedor.setTipo(tipo);
+        fornecedor.setContato(contato);
+        fornecedor.setTelefone(telefone);
+        fornecedor.setEmail(email);
+        fornecedorRepository.save(fornecedor);
+    }
+
+    private Fornecedor fornecedor(String nome) {
+        return fornecedorRepository.findAll().stream().filter(f -> f.getNome().equals(nome)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Fornecedor de exemplo não encontrado: " + nome));
+    }
+
+    private Pastilha produto(String codigo) {
+        return pastilhaRepository.findAll().stream().filter(p -> p.getCodigo().equals(codigo)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Produto de exemplo não encontrado: " + codigo));
+    }
+
+    /** Materiais de uma metalúrgica, com fotos reais (arquivos em src/main/resources/seed-images). */
     private void seedPastilhas() {
         if (pastilhaRepository.count() > 0) {
             return;
         }
 
-        Fornecedor sandvik = fornecedorRepository.findAll().get(0);
-        Fornecedor mitsubishi = fornecedorRepository.findAll().get(1);
+        Fornecedor planalto = fornecedor("Siderúrgica Planalto");
+        Fornecedor serrana = fornecedor("Tintas Serrana");
+        Fornecedor ferragens = fornecedor("Ferragens Fraiburgo");
 
-        Pastilha p1 = new Pastilha();
-        p1.setCodigo("CNMG120408");
-        p1.setDescricao("Pastilha de torneamento CNMG 120408");
-        p1.setFabricante(sandvik);
-        p1.setEstoqueMinimo(20);
-        p1.setQuantidadeAtual(35);
-        p1.setImagemUrl(gerarImagemExemplo("CNMG120408", new Color(31, 78, 121)));
-        pastilhaRepository.save(p1);
+        criarProduto("BAR-FE-01", "Barra de ferro quadrada 1\" (barra de 6 m)", planalto, 20, 45, "barra-ferro-chata.jpg");
+        criarProduto("RDA-PORT-150", "Roda de portão em ferro fundido 150 mm", ferragens, 10, 14, "roda-portao.jpg");
+        criarProduto("TIN-ESM-04", "Tinta esmalte sintético exterior (lata 0,4 kg)", serrana, 12, 8, "tinta-esmalte.jpg");
+        criarProduto("VER-DAM-75", "Verniz damar incolor (frasco 75 ml)", serrana, 8, 20, "verniz.jpg");
+        criarProduto("ELE-6013-25", "Eletrodo de solda E6013 2,5 mm (caixa 5 kg)", planalto, 15, 28, "eletrodo-e6013.jpg");
+        criarProduto("DIS-COR-125", "Disco de corte para aço 125 mm (1 mm)", ferragens, 30, 52, "disco-corte.jpg");
+        criarProduto("DOB-PORT-REF", "Dobradiça de portão reforçada com pino regulável", ferragens, 10, 10,
+                "dobradica-portao.jpg");
+        criarProduto("TUB-ACO-48", "Tubo de aço inox 304 redondo 1.1/2\" (barra de 6 m)", planalto, 15, 30, "tubo-aco.jpg");
+    }
 
-        Pastilha p2 = new Pastilha();
-        p2.setCodigo("APMT160408");
-        p2.setDescricao("Pastilha de fresamento APMT 160408");
-        p2.setFabricante(mitsubishi);
-        p2.setEstoqueMinimo(15);
-        p2.setQuantidadeAtual(8);
-        p2.setImagemUrl(gerarImagemExemplo("APMT160408", new Color(27, 138, 90)));
-        pastilhaRepository.save(p2);
-
-        Pastilha p3 = new Pastilha();
-        p3.setCodigo("DCMT11T304");
-        p3.setDescricao("Pastilha de acabamento DCMT 11T304");
-        p3.setFabricante(sandvik);
-        p3.setEstoqueMinimo(10);
-        p3.setQuantidadeAtual(10);
-        pastilhaRepository.save(p3);
+    private void criarProduto(String codigo, String descricao, Fornecedor fabricante, int minimo, int atual, String imagem) {
+        Pastilha p = new Pastilha();
+        p.setCodigo(codigo);
+        p.setDescricao(descricao);
+        p.setFabricante(fabricante);
+        p.setEstoqueMinimo(minimo);
+        p.setQuantidadeAtual(atual);
+        p.setImagemUrl(copiarImagemExemplo(imagem));
+        pastilhaRepository.save(p);
     }
 
     private void seedProjetos() {
@@ -222,10 +217,13 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        List<Pastilha> pastilhas = pastilhaRepository.findAll();
-        Pastilha cnmg = pastilhas.get(0);
-        Pastilha apmt = pastilhas.get(1);
-        Pastilha dcmt = pastilhas.get(2);
+        Pastilha barra = produto("BAR-FE-01");
+        Pastilha roda = produto("RDA-PORT-150");
+        Pastilha tinta = produto("TIN-ESM-04");
+        Pastilha eletrodo = produto("ELE-6013-25");
+        Pastilha disco = produto("DIS-COR-125");
+        Pastilha dobradica = produto("DOB-PORT-REF");
+        Pastilha tubo = produto("TUB-ACO-48");
 
         // Exemplo citado pelo usuário: projeto de cerca de metal, em produção,
         // com parte do checklist já concluída.
@@ -235,9 +233,12 @@ public class DataSeeder implements CommandLineRunner {
         cercaMetal.setStatus(StatusProjeto.EM_PRODUCAO);
         cercaMetal.setDataCriacao(LocalDateTime.now().minusDays(3));
         cercaMetal.setDataInicioProducao(LocalDateTime.now().minusDays(2));
-        adicionarMaterial(cercaMetal, cnmg, 10);
+        adicionarMaterial(cercaMetal, barra, 10);
+        adicionarMaterial(cercaMetal, tubo, 4);
+        adicionarMaterial(cercaMetal, eletrodo, 2);
+        adicionarMaterial(cercaMetal, tinta, 2);
         adicionarChecklist(cercaMetal,
-                new String[] { "Separar as pastilhas e materiais da lista", "Fazer o ligamento (solda) das peças",
+                new String[] { "Separar os materiais da lista", "Fazer o ligamento (solda) das peças",
                         "Fazer as rodas", "Pintura", "Finalização e conferência" },
                 2);
         projetoRepository.save(cercaMetal);
@@ -247,7 +248,9 @@ public class DataSeeder implements CommandLineRunner {
         suporteIndustrial.setDescricao("Suporte metálico para fixação de equipamento.");
         suporteIndustrial.setStatus(StatusProjeto.AGUARDANDO);
         suporteIndustrial.setDataCriacao(LocalDateTime.now().minusHours(6));
-        adicionarMaterial(suporteIndustrial, apmt, 4);
+        adicionarMaterial(suporteIndustrial, barra, 4);
+        adicionarMaterial(suporteIndustrial, disco, 6);
+        adicionarMaterial(suporteIndustrial, eletrodo, 1);
         adicionarChecklist(suporteIndustrial,
                 new String[] { "Separar materiais", "Corte e furação", "Montagem", "Acabamento" }, 0);
         projetoRepository.save(suporteIndustrial);
@@ -259,6 +262,8 @@ public class DataSeeder implements CommandLineRunner {
         portao.setDataCriacao(LocalDateTime.now().minusDays(7));
         portao.setDataInicioProducao(LocalDateTime.now().minusDays(6));
         portao.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(2));
+        adicionarMaterial(portao, roda, 4);
+        adicionarMaterial(portao, dobradica, 4);
         adicionarChecklist(portao, new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
         projetoRepository.save(portao);
 
@@ -267,7 +272,8 @@ public class DataSeeder implements CommandLineRunner {
         escada.setDescricao("Escada de acesso ao reservatório, liberada para entrega.");
         escada.setStatus(StatusProjeto.PRONTO_ENTREGA);
         escada.setCliente("Cliente MNO");
-        adicionarMaterial(escada, dcmt, 2);
+        adicionarMaterial(escada, tubo, 2);
+        adicionarMaterial(escada, tinta, 1);
         escada.setDataCriacao(LocalDateTime.now().minusDays(8));
         escada.setDataInicioProducao(LocalDateTime.now().minusDays(7));
         escada.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(3));
@@ -284,7 +290,8 @@ public class DataSeeder implements CommandLineRunner {
         baseEsteira.setDataFinalizacaoProducao(LocalDateTime.now().minusDays(1));
         baseEsteira.setDataPedido(LocalDate.now().minusDays(10));
         baseEsteira.setMetaEntrega(LocalDate.now().plusDays(5));
-        adicionarMaterial(baseEsteira, cnmg, 20);
+        adicionarMaterial(baseEsteira, barra, 12);
+        adicionarMaterial(baseEsteira, eletrodo, 3);
         adicionarChecklist(baseEsteira,
                 new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
         projetoRepository.save(baseEsteira);
@@ -300,7 +307,8 @@ public class DataSeeder implements CommandLineRunner {
         gradeProtecao.setDataPedido(LocalDate.now().minusDays(20));
         gradeProtecao.setMetaEntrega(LocalDate.now().minusDays(13));
         gradeProtecao.setDataEntrega(LocalDateTime.now().minusDays(14));
-        adicionarMaterial(gradeProtecao, apmt, 5);
+        adicionarMaterial(gradeProtecao, tubo, 5);
+        adicionarMaterial(gradeProtecao, disco, 8);
         adicionarChecklist(gradeProtecao,
                 new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
         projetoRepository.save(gradeProtecao);
@@ -311,10 +319,11 @@ public class DataSeeder implements CommandLineRunner {
         if (modeloProjetoRepository.count() > 0) {
             return;
         }
-        Long cnmg = pastilhaRepository.findAll().stream().filter(p -> "CNMG120408".equals(p.getCodigo()))
-                .map(Pastilha::getId).findFirst().orElse(null);
-        Long dcmt = pastilhaRepository.findAll().stream().filter(p -> "DCMT11T304".equals(p.getCodigo()))
-                .map(Pastilha::getId).findFirst().orElse(null);
+        Long barra = produto("BAR-FE-01").getId();
+        Long tubo = produto("TUB-ACO-48").getId();
+        Long eletrodo = produto("ELE-6013-25").getId();
+        Long tinta = produto("TIN-ESM-04").getId();
+        Long disco = produto("DIS-COR-125").getId();
 
         ModeloProjeto cerca = new ModeloProjeto();
         cerca.setNome("Cerca de metal (padrão)");
@@ -322,22 +331,20 @@ public class DataSeeder implements CommandLineRunner {
         cerca.getChecklist().addAll(List.of("Cortar os tubos nas medidas", "Soldar a estrutura da cerca",
                 "Montar e soldar o portão", "Lixar e remover rebarbas", "Aplicar fundo e pintura",
                 "Conferência final e embalagem"));
-        if (cnmg != null) {
-            cerca.getMateriais().add(new ModeloProjeto.Material(cnmg, 10));
-        }
+        cerca.getMateriais().add(new ModeloProjeto.Material(barra, 10));
+        cerca.getMateriais().add(new ModeloProjeto.Material(tubo, 4));
+        cerca.getMateriais().add(new ModeloProjeto.Material(eletrodo, 2));
+        cerca.getMateriais().add(new ModeloProjeto.Material(tinta, 2));
         modeloProjetoRepository.save(cerca);
 
         ModeloProjeto suporte = new ModeloProjeto();
         suporte.setNome("Suporte metálico (padrão)");
-        suporte.setDescricao("Suporte usinado em aço para fixação de equipamentos");
-        suporte.getChecklist().addAll(List.of("Preparar o material", "Usinar o suporte (torneamento)",
-                "Acabamento das superfícies", "Inspeção dimensional"));
-        if (cnmg != null) {
-            suporte.getMateriais().add(new ModeloProjeto.Material(cnmg, 4));
-        }
-        if (dcmt != null) {
-            suporte.getMateriais().add(new ModeloProjeto.Material(dcmt, 2));
-        }
+        suporte.setDescricao("Suporte em aço para fixação de equipamentos");
+        suporte.getChecklist().addAll(List.of("Preparar o material", "Cortar e furar as peças",
+                "Soldar e montar o suporte", "Acabamento das superfícies", "Inspeção dimensional"));
+        suporte.getMateriais().add(new ModeloProjeto.Material(barra, 4));
+        suporte.getMateriais().add(new ModeloProjeto.Material(disco, 6));
+        suporte.getMateriais().add(new ModeloProjeto.Material(eletrodo, 1));
         modeloProjetoRepository.save(suporte);
     }
 
@@ -346,23 +353,33 @@ public class DataSeeder implements CommandLineRunner {
             return;
         }
 
-        List<Fornecedor> fornecedores = fornecedorRepository.findAll();
-        Fornecedor sandvik = fornecedores.get(0);
-        Fornecedor mitsubishi = fornecedores.get(1);
-        Fornecedor distribuidora = fornecedores.get(2);
+        Fornecedor planalto = fornecedor("Siderúrgica Planalto");
+        Fornecedor serrana = fornecedor("Tintas Serrana");
+        Fornecedor ferragens = fornecedor("Ferragens Fraiburgo");
 
-        List<Pastilha> pastilhas = pastilhaRepository.findAll();
-        Pastilha cnmg = pastilhas.get(0);
-        Pastilha apmt = pastilhas.get(1);
-        Pastilha dcmt = pastilhas.get(2);
+        Pastilha barra = produto("BAR-FE-01");
+        Pastilha roda = produto("RDA-PORT-150");
+        Pastilha tinta = produto("TIN-ESM-04");
+        Pastilha verniz = produto("VER-DAM-75");
+        Pastilha eletrodo = produto("ELE-6013-25");
+        Pastilha disco = produto("DIS-COR-125");
+        Pastilha dobradica = produto("DOB-PORT-REF");
+        Pastilha tubo = produto("TUB-ACO-48");
 
-        // Quem fornece cada peça e por quanto (a distribuidora vende tudo, porém mais caro).
-        vincular(sandvik, cnmg, "12.50");
-        vincular(sandvik, dcmt, "9.80");
-        vincular(mitsubishi, apmt, "14.20");
-        vincular(distribuidora, cnmg, "13.90");
-        vincular(distribuidora, apmt, "15.00");
-        vincular(distribuidora, dcmt, "10.50");
+        // Quem fornece cada item e por quanto (a loja de ferragens vende quase tudo, porém mais caro).
+        vincular(planalto, barra, "62.00");
+        vincular(planalto, tubo, "118.00");
+        vincular(planalto, eletrodo, "24.50");
+        vincular(serrana, tinta, "18.90");
+        vincular(serrana, verniz, "14.50");
+        vincular(ferragens, roda, "38.90");
+        vincular(ferragens, dobradica, "21.50");
+        vincular(ferragens, disco, "6.40");
+        vincular(ferragens, barra, "68.00");
+        vincular(ferragens, tubo, "129.00");
+        vincular(ferragens, eletrodo, "26.90");
+        vincular(ferragens, tinta, "22.00");
+        vincular(ferragens, verniz, "17.90");
 
         for (Projeto projeto : projetoRepository.findAll()) {
             String nome = projeto.getNome();
@@ -421,33 +438,21 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     /**
-     * Gera uma imagem de exemplo (placeholder) para demonstrar a galeria de
-     * imagens sem depender de um arquivo binário versionado no repositório.
+     * Copia uma foto de exemplo (guardada em src/main/resources/seed-images, com os créditos em CREDITOS.md)
+     * para a pasta de uploads, de onde o sistema serve as imagens dos produtos.
      */
-    private String gerarImagemExemplo(String codigo, Color cor) {
-        int tamanho = 300;
-        BufferedImage imagem = new BufferedImage(tamanho, tamanho, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g = imagem.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setColor(cor);
-        g.fillRect(0, 0, tamanho, tamanho);
-        g.setColor(cor.darker());
-        g.fillOval(tamanho / 2 - 70, tamanho / 2 - 70, 140, 140);
-        g.setColor(Color.WHITE);
-        g.fillOval(tamanho / 2 - 25, tamanho / 2 - 25, 50, 50);
-        g.setFont(new Font("SansSerif", Font.BOLD, 22));
-        g.drawString(codigo, 20, tamanho - 24);
-        g.dispose();
-
-        try {
+    private String copiarImagemExemplo(String arquivo) {
+        try (InputStream origem = getClass().getResourceAsStream("/seed-images/" + arquivo)) {
+            if (origem == null) {
+                return null;
+            }
             Path diretorio = Path.of(uploadsDir, "pastilhas");
             Files.createDirectories(diretorio);
-            String nomeArquivo = "seed-" + codigo.toLowerCase() + ".png";
-            Path destino = diretorio.resolve(nomeArquivo);
-            ImageIO.write(imagem, "png", destino.toFile());
+            String nomeArquivo = "seed-" + arquivo;
+            Files.copy(origem, diretorio.resolve(nomeArquivo), StandardCopyOption.REPLACE_EXISTING);
             return "/uploads/pastilhas/" + nomeArquivo;
         } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao gerar imagem de exemplo.", e);
+            throw new UncheckedIOException("Falha ao copiar a imagem de exemplo " + arquivo, e);
         }
     }
 }

@@ -327,7 +327,7 @@ export default function Pastilhas() {
                 <input
                   value={form.codigo}
                   onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                  placeholder="Ex: CNMG120408"
+                  placeholder="Ex: BAR-FE-01"
                   required
                   autoFocus
                 />
@@ -352,7 +352,7 @@ export default function Pastilhas() {
               <input
                 value={form.descricao}
                 onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                placeholder="Ex: Pastilha de torneamento"
+                placeholder="Ex: Barra de ferro quadrada 1 pol."
                 required
               />
             </label>

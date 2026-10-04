@@ -33,6 +33,11 @@ Usuários de demonstração (criados automaticamente):
 
 Todas as contas têm acesso à aba **Mensagens**, que não depende de permissão.
 
+Os dados de exemplo simulam o estoque de uma metalúrgica (barras de ferro, tubos, rodas e dobradiças de portão, tinta,
+verniz, eletrodos e discos de corte) com fotos reais. As imagens ficam em `backend/src/main/resources/seed-images/`,
+são de uso livre (Wikimedia Commons) e têm autor e licença listados em
+[CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
+
 Console do H2 (opcional, para inspecionar o banco): `http://localhost:8080/h2-console` — JDBC URL `jdbc:h2:mem:smartstock`, usuário `sa`, senha em branco.
 
 Imagens enviadas pelas telas de Pastilhas são salvas em `backend/uploads/` (fora do controle de versão — ver `.gitignore`).
@@ -83,6 +88,8 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
   do pedido preenchida automaticamente; a meta de entrega e a data do pedido continuam editáveis. Há ainda o botão
   "Marcar como entregue", o histórico de entregas e um calendário mensal em que o dia inteiro fica colorido
   (laranja = meta de entrega, verde = entregue) com os projetos listados dentro do dia.
+  Clicar num dia com pedido (ou no nome do pedido dentro do dia) destaca esse pedido na lista "Pedidos em aberto" e
+  rola até ele; pedidos já entregues são destacados no histórico. Pedidos com a meta vencida ganham o selo "Atrasado".
 
 - **Financeiro** (módulo de permissão próprio, não liberado ao funcionário de exemplo):
   - *Peças e valores:* mesmo modelo da aba Pastilhas (busca, imagem), mostrando para cada peça o preço de cada
