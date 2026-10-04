@@ -34,11 +34,14 @@ public class PastilhaService {
     @Value("${app.uploads.dir}")
     private String uploadsDir;
 
+    private final ModeloProjetoService modeloProjetoService;
+
     public PastilhaService(PastilhaRepository pastilhaRepository, FornecedorRepository fornecedorRepository,
-            FornecedorProdutoRepository fornecedorProdutoRepository) {
+            FornecedorProdutoRepository fornecedorProdutoRepository, ModeloProjetoService modeloProjetoService) {
         this.pastilhaRepository = pastilhaRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.fornecedorProdutoRepository = fornecedorProdutoRepository;
+        this.modeloProjetoService = modeloProjetoService;
     }
 
     public List<Pastilha> listar() {
@@ -80,6 +83,7 @@ public class PastilhaService {
     public void excluir(Long id) {
         Pastilha pastilha = buscarPorId(id);
         fornecedorProdutoRepository.deleteByPastilhaId(id);
+        modeloProjetoService.removerPastilhaDosModelos(id);
         removerArquivoImagem(pastilha);
         pastilhaRepository.delete(pastilha);
     }

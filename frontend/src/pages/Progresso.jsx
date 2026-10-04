@@ -4,6 +4,21 @@ import Modal from '../components/Modal';
 
 const EMPTY_FORM = { nome: '', descricao: '', cliente: '', checklist: [], materiais: [] };
 
+const NOME_ETAPA = {
+  AGUARDANDO: 'Aguardando início',
+  EM_PRODUCAO: 'Em produção',
+  EM_ESTOQUE: 'Em estoque',
+  PRONTO_ENTREGA: 'Pronto para entrega',
+  PEDIDO_ENVIADO: 'Pedido enviado',
+  ENTREGUE: 'Entregue',
+};
+
+const ORIGENS = [
+  { id: 'branco', rotulo: 'Em branco' },
+  { id: 'projeto', rotulo: 'Repetir um projeto' },
+  { id: 'modelo', rotulo: 'Usar um modelo padrão' },
+];
+
 const ETAPAS = [
   {
     status: 'AGUARDANDO',
@@ -55,13 +70,26 @@ export default function Progresso() {
   const [formError, setFormError] = useState('');
   const [clientes, setClientes] = useState({});
   const [metas, setMetas] = useState({});
+  // pontos de partida para um projeto novo: projetos que já existem (inclusive entregues) e modelos salvos
+  const [historico, setHistorico] = useState([]);
+  const [modelos, setModelos] = useState([]);
+  const [origem, setOrigem] = useState('branco');
+  const [origemId, setOrigemId] = useState('');
+  const [salvarComoModelo, setSalvarComoModelo] = useState(false);
 
   function carregar() {
     setLoading(true);
-    Promise.all([api.get('/projetos/progresso'), api.get('/pastilhas')])
-      .then(([p, m]) => {
+    Promise.all([
+      api.get('/projetos/progresso'),
+      api.get('/pastilhas'),
+      api.get('/projetos/calendario'),
+      api.get('/modelos-projeto'),
+    ])
+      .then(([p, m, c, mod]) => {
         setProjetos(p.data);
         setPastilhas(m.data);
+        setHistorico([...p.data, ...c.data].sort((a, b) => b.id - a.id));
+        setModelos(mod.data);
       })
       .catch(() => setError('Não foi possível carregar os projetos.'))
       .finally(() => setLoading(false));
@@ -72,12 +100,78 @@ export default function Progresso() {
   function abrirNovo() {
     setEditando(null);
     setForm({ ...EMPTY_FORM, checklist: [novoItemChecklist()] });
+    setOrigem('branco');
+    setOrigemId('');
+    setSalvarComoModelo(false);
     setFormError('');
     setModalAberto(true);
   }
 
+  // Preenche o formulário com as etapas (desmarcadas) e os materiais de outro projeto; o cliente fica em branco.
+  function preencherDeProjeto(projeto) {
+    setForm({
+      nome: projeto.nome,
+      descricao: projeto.descricao ?? '',
+      cliente: '',
+      checklist: projeto.checklist.length
+        ? projeto.checklist.map((c) => ({ texto: c.texto, concluido: false }))
+        : [novoItemChecklist()],
+      materiais: projeto.materiais
+        .filter((m) => pastilhas.some((x) => x.id === m.pastilha.id))
+        .map((m) => ({ pastilhaId: String(m.pastilha.id), quantidade: m.quantidade })),
+    });
+  }
+
+  function preencherDeModelo(modelo) {
+    setForm({
+      nome: modelo.nome.replace(/\s*\(padrão\)\s*$/i, ''),
+      descricao: modelo.descricao ?? '',
+      cliente: '',
+      checklist: modelo.checklist.length
+        ? modelo.checklist.map((texto) => ({ texto, concluido: false }))
+        : [novoItemChecklist()],
+      materiais: modelo.materiais
+        .filter((m) => pastilhas.some((x) => x.id === m.pastilhaId))
+        .map((m) => ({ pastilhaId: String(m.pastilhaId), quantidade: m.quantidade })),
+    });
+  }
+
+  // atalho no card: abre o formulário de novo projeto já preenchido com aquele projeto
+  function repetirProjeto(projeto) {
+    abrirNovo();
+    setOrigem('projeto');
+    setOrigemId(String(projeto.id));
+    preencherDeProjeto(projeto);
+  }
+
+  function escolherOrigem(id) {
+    setOrigem(id);
+    setOrigemId('');
+    if (id === 'branco') setForm({ ...EMPTY_FORM, checklist: [novoItemChecklist()] });
+  }
+
+  function escolherOrigemItem(id) {
+    setOrigemId(id);
+    if (!id) return;
+    if (origem === 'projeto') preencherDeProjeto(historico.find((p) => String(p.id) === id));
+    if (origem === 'modelo') preencherDeModelo(modelos.find((m) => String(m.id) === id));
+  }
+
+  async function excluirModelo() {
+    const modelo = modelos.find((m) => String(m.id) === origemId);
+    if (!modelo || !window.confirm(`Excluir o modelo "${modelo.nome}"? Os projetos já criados não são afetados.`)) return;
+    try {
+      await api.delete(`/modelos-projeto/${modelo.id}`);
+      setModelos((ms) => ms.filter((m) => m.id !== modelo.id));
+      setOrigemId('');
+    } catch {
+      setFormError('Não foi possível excluir o modelo.');
+    }
+  }
+
   function abrirEdicao(p) {
     setEditando(p);
+    setSalvarComoModelo(false);
     setForm({
       nome: p.nome,
       descricao: p.descricao ?? '',
@@ -133,6 +227,15 @@ export default function Progresso() {
         await api.put(`/projetos/${editando.id}`, payload);
       } else {
         await api.post('/projetos', payload);
+      }
+      if (salvarComoModelo) {
+        // se já houver um modelo com este nome, ele é atualizado
+        await api.post('/modelos-projeto', {
+          nome: payload.nome,
+          descricao: payload.descricao,
+          checklist: payload.checklist.map((c) => c.texto),
+          materiais: payload.materiais,
+        });
       }
       setModalAberto(false);
       carregar();
@@ -283,6 +386,9 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
           <button className="btn-link" onClick={() => abrirEdicao(projeto)}>
             Editar
           </button>
+          <button className="btn-link" title="Criar um projeto novo a partir deste" onClick={() => repetirProjeto(projeto)}>
+            Repetir
+          </button>
           <button className="btn-link btn-link-danger" onClick={() => excluir(projeto)}>
             Excluir
           </button>
@@ -361,6 +467,74 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
       {modalAberto && (
         <Modal title={editando ? 'Editar projeto' : 'Novo projeto'} onClose={() => setModalAberto(false)}>
           <form onSubmit={salvar} className="form">
+            {!editando && (
+              <div className="origem-projeto">
+                <span className="permissoes-label">Como começar?</span>
+                <div className="segmentado" role="tablist">
+                  {ORIGENS.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={origem === o.id}
+                      className={'segmentado-item' + (origem === o.id ? ' ativo' : '')}
+                      onClick={() => escolherOrigem(o.id)}
+                    >
+                      {o.rotulo}
+                    </button>
+                  ))}
+                </div>
+
+                {origem === 'projeto' && (
+                  <>
+                    <select value={origemId} onChange={(e) => escolherOrigemItem(e.target.value)} disabled={!historico.length}>
+                      <option value="">
+                        {historico.length ? 'Escolha o projeto que será repetido...' : 'Nenhum projeto cadastrado ainda'}
+                      </option>
+                      {historico.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {numeroOrdem(p.id)} — {p.nome}
+                          {p.cliente ? ` (${p.cliente})` : ''} · {NOME_ETAPA[p.status]}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="origem-dica">
+                      Copia as etapas (desmarcadas) e os materiais. O cliente fica em branco e você pode ajustar tudo antes de
+                      salvar.
+                    </small>
+                  </>
+                )}
+
+                {origem === 'modelo' && (
+                  <>
+                    <div className="origem-linha">
+                      <select value={origemId} onChange={(e) => escolherOrigemItem(e.target.value)} disabled={!modelos.length}>
+                        <option value="">
+                          {modelos.length ? 'Escolha um modelo padrão...' : 'Nenhum modelo salvo ainda'}
+                        </option>
+                        {modelos.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nome} · {m.checklist.length} {m.checklist.length === 1 ? 'etapa' : 'etapas'} · {m.materiais.length}{' '}
+                            {m.materiais.length === 1 ? 'material' : 'materiais'}
+                          </option>
+                        ))}
+                      </select>
+                      {origemId && (
+                        <button type="button" className="btn-link btn-link-danger" onClick={excluirModelo}>
+                          Excluir modelo
+                        </button>
+                      )}
+                    </div>
+                    <small className="origem-dica">
+                      {modelos.length
+                        ? 'O modelo preenche as etapas e os materiais; você ainda pode ajustar antes de salvar.'
+                        : 'Para criar um modelo, marque "Salvar também como modelo padrão" ao salvar um projeto.'}
+                    </small>
+                  </>
+                )}
+              </div>
+            )}
+
             <label>
               Nome do projeto
               <input
@@ -453,6 +627,14 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
                 + Adicionar etapa
               </button>
             </div>
+
+            <label className="checkbox-row modelo-opcao">
+              <input type="checkbox" checked={salvarComoModelo} onChange={(e) => setSalvarComoModelo(e.target.checked)} />
+              <span>
+                Salvar também como modelo padrão
+                <small>Fica disponível em "Usar um modelo padrão". Se já houver um modelo com este nome, ele é atualizado.</small>
+              </span>
+            </label>
 
             {formError && <div className="alert alert-error">{formError}</div>}
 

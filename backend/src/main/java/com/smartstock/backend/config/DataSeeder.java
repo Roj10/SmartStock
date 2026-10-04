@@ -34,6 +34,7 @@ import com.smartstock.backend.model.StatusProjeto;
 import com.smartstock.backend.model.StatusVenda;
 import com.smartstock.backend.model.TipoFornecedor;
 import com.smartstock.backend.model.Mensagem;
+import com.smartstock.backend.model.ModeloProjeto;
 import com.smartstock.backend.model.Usuario;
 import com.smartstock.backend.model.Venda;
 import com.smartstock.backend.repository.FornecedorProdutoRepository;
@@ -41,6 +42,7 @@ import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
 import com.smartstock.backend.repository.ProjetoRepository;
 import com.smartstock.backend.repository.MensagemRepository;
+import com.smartstock.backend.repository.ModeloProjetoRepository;
 import com.smartstock.backend.repository.UsuarioRepository;
 import com.smartstock.backend.repository.VendaRepository;
 
@@ -49,6 +51,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private final UsuarioRepository usuarioRepository;
     private final MensagemRepository mensagemRepository;
+    private final ModeloProjetoRepository modeloProjetoRepository;
     private final FornecedorRepository fornecedorRepository;
     private final PastilhaRepository pastilhaRepository;
     private final ProjetoRepository projetoRepository;
@@ -62,7 +65,8 @@ public class DataSeeder implements CommandLineRunner {
     public DataSeeder(UsuarioRepository usuarioRepository, FornecedorRepository fornecedorRepository,
             PastilhaRepository pastilhaRepository, ProjetoRepository projetoRepository,
             FornecedorProdutoRepository fornecedorProdutoRepository, VendaRepository vendaRepository,
-            MensagemRepository mensagemRepository, PasswordEncoder passwordEncoder) {
+            MensagemRepository mensagemRepository, ModeloProjetoRepository modeloProjetoRepository,
+            PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.pastilhaRepository = pastilhaRepository;
@@ -70,6 +74,7 @@ public class DataSeeder implements CommandLineRunner {
         this.fornecedorProdutoRepository = fornecedorProdutoRepository;
         this.vendaRepository = vendaRepository;
         this.mensagemRepository = mensagemRepository;
+        this.modeloProjetoRepository = modeloProjetoRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -81,6 +86,7 @@ public class DataSeeder implements CommandLineRunner {
         seedProjetos();
         seedFinanceiro();
         seedMensagens();
+        seedModelos();
     }
 
     private void seedUsuarios() {
@@ -298,6 +304,41 @@ public class DataSeeder implements CommandLineRunner {
         adicionarChecklist(gradeProtecao,
                 new String[] { "Separar materiais", "Corte e solda", "Pintura", "Finalização" }, 4);
         projetoRepository.save(gradeProtecao);
+    }
+
+    /** Modelos (padrões) de projeto de exemplo, para criar novos pedidos do mesmo tipo rapidamente. */
+    private void seedModelos() {
+        if (modeloProjetoRepository.count() > 0) {
+            return;
+        }
+        Long cnmg = pastilhaRepository.findAll().stream().filter(p -> "CNMG120408".equals(p.getCodigo()))
+                .map(Pastilha::getId).findFirst().orElse(null);
+        Long dcmt = pastilhaRepository.findAll().stream().filter(p -> "DCMT11T304".equals(p.getCodigo()))
+                .map(Pastilha::getId).findFirst().orElse(null);
+
+        ModeloProjeto cerca = new ModeloProjeto();
+        cerca.setNome("Cerca de metal (padrão)");
+        cerca.setDescricao("Cerca metálica com portão, conforme medidas do cliente");
+        cerca.getChecklist().addAll(List.of("Cortar os tubos nas medidas", "Soldar a estrutura da cerca",
+                "Montar e soldar o portão", "Lixar e remover rebarbas", "Aplicar fundo e pintura",
+                "Conferência final e embalagem"));
+        if (cnmg != null) {
+            cerca.getMateriais().add(new ModeloProjeto.Material(cnmg, 10));
+        }
+        modeloProjetoRepository.save(cerca);
+
+        ModeloProjeto suporte = new ModeloProjeto();
+        suporte.setNome("Suporte metálico (padrão)");
+        suporte.setDescricao("Suporte usinado em aço para fixação de equipamentos");
+        suporte.getChecklist().addAll(List.of("Preparar o material", "Usinar o suporte (torneamento)",
+                "Acabamento das superfícies", "Inspeção dimensional"));
+        if (cnmg != null) {
+            suporte.getMateriais().add(new ModeloProjeto.Material(cnmg, 4));
+        }
+        if (dcmt != null) {
+            suporte.getMateriais().add(new ModeloProjeto.Material(dcmt, 2));
+        }
+        modeloProjetoRepository.save(suporte);
     }
 
     private void seedFinanceiro() {

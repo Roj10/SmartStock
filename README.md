@@ -73,6 +73,12 @@ Acesse `http://localhost:5173`. O frontend espera a API em `http://localhost:808
   Ao enviar o pedido, o sistema registra automaticamente a saída de estoque com exatamente as quantidades
   solicitadas no projeto (identificada pelo número da OP e pelo cliente); se faltar estoque de algum item, o envio
   é bloqueado e nada é baixado.
+- **Repetir projetos e modelos padrão:** o botão "+ Novo projeto" pergunta como começar — *em branco*, *repetindo um
+  projeto* que já existe (inclusive os já entregues) ou *usando um modelo padrão*. O formulário vem preenchido com
+  as etapas (desmarcadas) e os materiais, o cliente fica em branco e tudo pode ser ajustado antes de salvar. Cada
+  card do quadro tem um atalho "Repetir". Para criar um modelo, marque "Salvar também como modelo padrão" ao salvar um
+  projeto (se já houver um modelo com o mesmo nome, ele é atualizado); modelos podem ser excluídos na própria tela.
+  Se uma pastilha for excluída, ela sai também dos modelos que a usavam.
 - **Calendário de entregas:** ao enviar o pedido, o projeto passa para o Calendário com o nome do cliente e a data
   do pedido preenchida automaticamente; a meta de entrega e a data do pedido continuam editáveis. Há ainda o botão
   "Marcar como entregue", o histórico de entregas e um calendário mensal em que o dia inteiro fica colorido
