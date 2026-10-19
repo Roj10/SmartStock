@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';
+import { AnexosCard, CampoAnexos } from '../components/AnexosProjeto';
 
 const EMPTY_FORM = { nome: '', descricao: '', cliente: '', checklist: [], materiais: [] };
 
@@ -76,6 +77,14 @@ export default function Progresso() {
   const [origem, setOrigem] = useState('branco');
   const [origemId, setOrigemId] = useState('');
   const [salvarComoModelo, setSalvarComoModelo] = useState(false);
+  // editar ou excluir um projeto exige a senha de um administrador (avançar etapas e enviar o pedido não exigem)
+  const [senhaAdmin, setSenhaAdmin] = useState('');
+  const [exclusao, setExclusao] = useState(null);
+  // arquivos do projeto: os que já existem (ou serão copiados, ao repetir), os marcados para remoção e os novos
+  const [anexosExistentes, setAnexosExistentes] = useState([]);
+  const [anexosRemover, setAnexosRemover] = useState([]);
+  const [arquivosNovos, setArquivosNovos] = useState([]);
+  const [anexosErro, setAnexosErro] = useState('');
 
   function carregar() {
     setLoading(true);
@@ -97,8 +106,22 @@ export default function Progresso() {
 
   useEffect(carregar, []);
 
+  function limparAnexos(existentes = []) {
+    setAnexosExistentes(existentes);
+    setAnexosRemover([]);
+    setArquivosNovos([]);
+    setAnexosErro('');
+  }
+
+  function removerAnexoExistente(anexo) {
+    setAnexosExistentes((lista) => lista.filter((a) => a.id !== anexo.id));
+    // na edição, a remoção só acontece de fato ao salvar (com a senha do administrador)
+    if (editando) setAnexosRemover((ids) => [...ids, anexo.id]);
+  }
+
   function abrirNovo() {
     setEditando(null);
+    limparAnexos();
     setForm({ ...EMPTY_FORM, checklist: [novoItemChecklist()] });
     setOrigem('branco');
     setOrigemId('');
@@ -107,8 +130,10 @@ export default function Progresso() {
     setModalAberto(true);
   }
 
-  // Preenche o formulário com as etapas (desmarcadas) e os materiais de outro projeto; o cliente fica em branco.
+  // Preenche o formulário com as etapas (desmarcadas), os materiais e os arquivos de outro projeto;
+  // o cliente fica em branco. Os arquivos são copiados para o projeto novo ao salvar (dá para tirar algum antes).
   function preencherDeProjeto(projeto) {
+    setAnexosExistentes((projeto.anexos ?? []).map((a) => ({ ...a, projetoId: projeto.id })));
     setForm({
       nome: projeto.nome,
       descricao: projeto.descricao ?? '',
@@ -123,6 +148,7 @@ export default function Progresso() {
   }
 
   function preencherDeModelo(modelo) {
+    setAnexosExistentes([]);
     setForm({
       nome: modelo.nome.replace(/\s*\(padrão\)\s*$/i, ''),
       descricao: modelo.descricao ?? '',
@@ -147,12 +173,16 @@ export default function Progresso() {
   function escolherOrigem(id) {
     setOrigem(id);
     setOrigemId('');
+    setAnexosExistentes([]);
     if (id === 'branco') setForm({ ...EMPTY_FORM, checklist: [novoItemChecklist()] });
   }
 
   function escolherOrigemItem(id) {
     setOrigemId(id);
-    if (!id) return;
+    if (!id) {
+      setAnexosExistentes([]);
+      return;
+    }
     if (origem === 'projeto') preencherDeProjeto(historico.find((p) => String(p.id) === id));
     if (origem === 'modelo') preencherDeModelo(modelos.find((m) => String(m.id) === id));
   }
@@ -172,6 +202,8 @@ export default function Progresso() {
   function abrirEdicao(p) {
     setEditando(p);
     setSalvarComoModelo(false);
+    setSenhaAdmin('');
+    limparAnexos((p.anexos ?? []).map((a) => ({ ...a, projetoId: p.id })));
     setForm({
       nome: p.nome,
       descricao: p.descricao ?? '',
@@ -224,9 +256,24 @@ export default function Progresso() {
     };
     try {
       if (editando) {
-        await api.put(`/projetos/${editando.id}`, payload);
+        // a senha é conferida primeiro aqui; depois os arquivos são removidos/enviados com a mesma senha
+        await api.put(`/projetos/${editando.id}`, { ...payload, senhaAdmin });
+        for (const anexoId of anexosRemover) {
+          await api.delete(`/projetos/${editando.id}/anexos/${anexoId}`, { data: { senhaAdmin } });
+        }
+        if (arquivosNovos.length) {
+          const dados = new FormData();
+          arquivosNovos.forEach((f) => dados.append('arquivos', f));
+          dados.append('senhaAdmin', senhaAdmin);
+          await api.post(`/projetos/${editando.id}/anexos`, dados);
+        }
       } else {
-        await api.post('/projetos', payload);
+        // projeto e arquivos vão juntos: se algum arquivo for recusado, o projeto não é criado
+        const dados = new FormData();
+        const json = { ...payload, anexosCopiar: anexosExistentes.map((a) => a.id) };
+        dados.append('dados', new Blob([JSON.stringify(json)], { type: 'application/json' }));
+        arquivosNovos.forEach((f) => dados.append('arquivos', f));
+        await api.post('/projetos', dados);
       }
       if (salvarComoModelo) {
         // se já houver um modelo com este nome, ele é atualizado
@@ -299,13 +346,23 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
     }
   }
 
-  async function excluir(p) {
-    if (!window.confirm(`Excluir o projeto "${p.nome}"?`)) return;
+  function abrirExclusao(p) {
+    setExclusao({ projeto: p, senha: '', erro: '', enviando: false });
+  }
+
+  async function confirmarExclusao(e) {
+    e.preventDefault();
+    setExclusao((x) => ({ ...x, erro: '', enviando: true }));
     try {
-      await api.delete(`/projetos/${p.id}`);
+      await api.delete(`/projetos/${exclusao.projeto.id}`, { data: { senhaAdmin: exclusao.senha } });
+      setExclusao(null);
       carregar();
-    } catch {
-      alert('Não foi possível excluir o projeto.');
+    } catch (err) {
+      setExclusao((x) => ({
+        ...x,
+        enviando: false,
+        erro: err.response?.data?.message ?? 'Não foi possível excluir o projeto.',
+      }));
     }
   }
 
@@ -325,6 +382,7 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
           </span>
         </div>
         {projeto.descricao && <p className="kanban-card-desc">{projeto.descricao}</p>}
+        <AnexosCard projetoId={projeto.id} anexos={projeto.anexos} />
 
         {projeto.materiais.length > 0 && (
           <div className="kanban-materiais">
@@ -383,13 +441,17 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
         )}
 
         <div className="kanban-card-actions">
-          <button className="btn-link" onClick={() => abrirEdicao(projeto)}>
+          <button className="btn-link" title="Exige a senha do administrador" onClick={() => abrirEdicao(projeto)}>
             Editar
           </button>
           <button className="btn-link" title="Criar um projeto novo a partir deste" onClick={() => repetirProjeto(projeto)}>
             Repetir
           </button>
-          <button className="btn-link btn-link-danger" onClick={() => excluir(projeto)}>
+          <button
+            className="btn-link btn-link-danger"
+            title="Exige a senha do administrador"
+            onClick={() => abrirExclusao(projeto)}
+          >
             Excluir
           </button>
           <span className="spacer" />
@@ -561,6 +623,15 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
               />
             </label>
 
+            <CampoAnexos
+              existentes={anexosExistentes}
+              onRemoverExistente={removerAnexoExistente}
+              novos={arquivosNovos}
+              onChangeNovos={setArquivosNovos}
+              onErro={setAnexosErro}
+            />
+            {anexosErro && <div className="alert alert-error">{anexosErro}</div>}
+
             <div className="dynamic-field">
               <span className="permissoes-label">Materiais necessários</span>
               {form.materiais.map((m, i) => (
@@ -636,6 +707,20 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
               </span>
             </label>
 
+            {editando && (
+              <label>
+                Senha do administrador
+                <input
+                  type="password"
+                  value={senhaAdmin}
+                  onChange={(e) => setSenhaAdmin(e.target.value)}
+                  placeholder="Necessária para salvar as alterações"
+                  autoComplete="off"
+                  required
+                />
+              </label>
+            )}
+
             {formError && <div className="alert alert-error">{formError}</div>}
 
             <div className="form-actions">
@@ -643,7 +728,40 @@ Os materiais do projeto serão baixados do estoque: ${projeto.materiais
                 Cancelar
               </button>
               <button type="submit" className="btn btn-primary" disabled={salvando}>
-                {salvando ? 'Salvando...' : 'Salvar'}
+                {salvando ? (arquivosNovos.length ? 'Enviando arquivos...' : 'Salvando...') : 'Salvar'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {exclusao && (
+        <Modal title="Excluir projeto" onClose={() => setExclusao(null)}>
+          <form onSubmit={confirmarExclusao} className="form">
+            <p>
+              Excluir o projeto <strong>{numeroOrdem(exclusao.projeto.id)} — {exclusao.projeto.nome}</strong>? Esta ação não
+              pode ser desfeita.
+            </p>
+            <label>
+              Senha do administrador
+              <input
+                type="password"
+                value={exclusao.senha}
+                onChange={(e) => setExclusao((x) => ({ ...x, senha: e.target.value }))}
+                autoComplete="off"
+                required
+                autoFocus
+              />
+            </label>
+
+            {exclusao.erro && <div className="alert alert-error">{exclusao.erro}</div>}
+
+            <div className="form-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setExclusao(null)}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-danger" disabled={exclusao.enviando}>
+                {exclusao.enviando ? 'Excluindo...' : 'Excluir'}
               </button>
             </div>
           </form>

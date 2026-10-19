@@ -58,6 +58,11 @@ public class Projeto {
     @OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ProjetoMaterial> materiais = new ArrayList<>();
 
+    /** Arquivos do projeto (PDF, desenhos, fotos). Carregados sob demanda para não pesar as consultas. */
+    @OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("id ASC")
+    private List<ProjetoAnexo> anexos = new ArrayList<>();
+
     public Long getId() {
         return id;
     }
@@ -160,6 +165,14 @@ public class Projeto {
 
     public void setMateriais(List<ProjetoMaterial> materiais) {
         this.materiais = materiais;
+    }
+
+    public List<ProjetoAnexo> getAnexos() {
+        return anexos;
+    }
+
+    public void setAnexos(List<ProjetoAnexo> anexos) {
+        this.anexos = anexos;
     }
 
     public int getTotalChecklist() {

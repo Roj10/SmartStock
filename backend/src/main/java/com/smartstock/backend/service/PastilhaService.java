@@ -94,6 +94,9 @@ public class PastilhaService {
         if (arquivo == null || arquivo.isEmpty()) {
             throw new BusinessException("Selecione um arquivo de imagem.");
         }
+        if (arquivo.getSize() > 5L * 1024 * 1024) {
+            throw new BusinessException("A imagem é grande demais. O limite é de 5 MB.");
+        }
         if (!TIPOS_PERMITIDOS.contains(arquivo.getContentType())) {
             throw new BusinessException("Formato de imagem não suportado. Use PNG, JPEG, WEBP ou GIF.");
         }

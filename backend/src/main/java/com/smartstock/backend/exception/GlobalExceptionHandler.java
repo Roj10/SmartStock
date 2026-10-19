@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> handleUploadGrande(MaxUploadSizeExceededException ex) {
-        return build(HttpStatus.PAYLOAD_TOO_LARGE, "A imagem é grande demais. O limite é de 5 MB.");
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, "O arquivo é grande demais. O limite é de 20 MB por arquivo (5 MB para imagens).");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

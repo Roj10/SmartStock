@@ -103,6 +103,9 @@ public class MensagemService {
         if (arquivo == null || arquivo.isEmpty()) {
             throw new BusinessException("Selecione uma imagem para enviar.");
         }
+        if (arquivo.getSize() > 5L * 1024 * 1024) {
+            throw new BusinessException("A imagem é grande demais. O limite é de 5 MB.");
+        }
         if (legenda != null && legenda.trim().length() > LIMITE_TEXTO) {
             throw new BusinessException("A mensagem pode ter no máximo " + LIMITE_TEXTO + " caracteres.");
         }

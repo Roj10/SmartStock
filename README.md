@@ -190,8 +190,8 @@ mostradas: o administrador só pode redefini-las.
   Mesmo que alguém tente chamar a API "na mão", sem a permissão recebe erro 403.
 - **Banco de dados (H2 em memória):** guarda usuários, itens, movimentações, projetos, vendas e mensagens. É recriado,
   com dados de exemplo, a cada início do backend (veja [Próximos passos](#13-próximos-passos-e-créditos)).
-- **Imagens:** fotos de itens ficam em `backend/uploads/`; imagens das conversas ficam em
-  `backend/uploads-privado/`, sem link público.
+- **Imagens e arquivos:** fotos de itens ficam em `backend/uploads/`; imagens das conversas e arquivos dos projetos
+  ficam em `backend/uploads-privado/`, sem link público.
 
 **Caminho de um pedido (ordem de produção):**
 
@@ -202,6 +202,7 @@ Aguardando início → Em produção → Em estoque → Pronto para entrega ─�
 ```
 
 - Só se avança ou volta **uma etapa por vez**, e as etapas do checklist só podem ser marcadas em **Em produção**.
+- **Editar** ou **excluir** um projeto pede a **senha do administrador**; mudar de etapa e enviar o pedido, não.
 - Ao **enviar o pedido**, o sistema dá baixa no estoque com os materiais do projeto. Se faltar qualquer item, o envio é
   bloqueado e **nada** é baixado.
 
@@ -228,6 +229,15 @@ Aguardando início → Em produção → Em estoque → Pronto para entrega ─�
 - **Repetir e modelos:** o botão **+ Novo projeto** pergunta como começar (em branco, repetindo um projeto existente —
   inclusive entregues — ou usando um modelo padrão). Os campos vêm preenchidos para ajustar. Cada card tem o atalho
   **Repetir**, e é possível **salvar um projeto como modelo** (se o nome já existir, o modelo é atualizado).
+- **Arquivos do projeto:** no **+ Novo projeto** dá para anexar PDFs, desenhos de CAD (DWG, DXF, STEP, STL...),
+  imagens, documentos, planilhas ou ZIP — arrastando ou clicando, vários de uma vez, até 20 MB cada e 20 por projeto.
+  Os arquivos aparecem no card: PDF e imagens abrem numa nova aba; os demais são baixados. Ao **Repetir** um projeto,
+  os arquivos vêm junto (dá para tirar algum antes de salvar). Incluir ou remover arquivos de um projeto que já existe
+  é feito pelo **Editar** e, como toda edição, pede a senha do administrador. Os arquivos ficam em
+  `backend/uploads-privado/projetos/`, sem link público: só quem tem acesso ao Progresso consegue abri-los.
+- **Editar e excluir exigem a senha do administrador:** ao editar um projeto, o formulário só salva com a senha de uma
+  conta administradora; ao excluir, ela é pedida num pop-up. A senha é conferida no servidor. Criar, repetir, avançar
+  ou voltar etapas, marcar o checklist e enviar o pedido continuam sem senha.
 
 **Calendário de entregas**
 - Calendário mensal com o dia colorido (laranja = meta de entrega, verde = entregue) e os projetos dentro do dia.
@@ -289,7 +299,7 @@ Todas as rotas começam com `/api` e, exceto o login, exigem o token JWT no cabe
 | Pastilhas | `GET/POST /pastilhas`, `PUT/DELETE /pastilhas/{id}`, `POST/DELETE /pastilhas/{id}/imagem`, `GET /pastilhas/alertas` | leitura: Estoque, Movimentações, Progresso ou Fornecedores; escrita: Estoque |
 | Movimentações | `GET /movimentacoes`, `POST /movimentacoes/entrada`, `/entrada/lote`, `/saida` | Movimentações |
 | Fornecedores | `GET/POST /fornecedores`, `PUT/DELETE /fornecedores/{id}`, `GET /fornecedores/produtos`, `PUT /fornecedores/{id}/produtos` | Fornecedores |
-| Projetos | `GET /projetos/progresso`, `/projetos/calendario`, `POST /projetos`, `PATCH /projetos/{id}/status`, `POST /projetos/{id}/enviar-pedido`, `POST /projetos/{id}/entregar` | Progresso |
+| Projetos | `GET /projetos/progresso`, `/projetos/calendario`, `POST /projetos`, `PUT/DELETE /projetos/{id}` (com `senhaAdmin` no corpo), `GET /projetos/{id}/anexos/{anexoId}`, `POST /projetos/{id}/anexos`, `DELETE /projetos/{id}/anexos/{anexoId}`, `PATCH /projetos/{id}/status`, `POST /projetos/{id}/enviar-pedido`, `POST /projetos/{id}/entregar` | Progresso |
 | Modelos | `GET/POST /modelos-projeto`, `DELETE /modelos-projeto/{id}` | Progresso |
 | Financeiro | `GET /financeiro/resumo`, `/pecas`, `/projetos`; `GET/POST /vendas`, `POST /vendas/{id}/fechar` | Financeiro |
 | Mensagens | `GET /mensagens/contatos`, `/nao-lidas`, `GET/POST /mensagens/conversa/{usuarioId}`, `GET /mensagens/{id}/imagem` | conta logada |
@@ -308,7 +318,8 @@ usuário `sa`, senha em branco.
 | `jwt.secret` / `jwt.expiration-ms` | Chave do token de login e validade (padrão 24 h). **Troque a chave em uso real.** |
 | `app.uploads.dir` | Pasta das fotos de itens (padrão `uploads`) |
 | `app.mensagens.dir` | Pasta privada das imagens das conversas |
-| `spring.servlet.multipart.max-file-size` | Tamanho máximo de upload (5 MB) |
+| `app.projetos.dir` | Pasta privada dos arquivos dos projetos (PDF, CAD...) |
+| `spring.servlet.multipart.max-file-size` | Tamanho máximo de cada arquivo enviado (20 MB; imagens de itens e conversas seguem limitadas a 5 MB) |
 
 **Frontend** – o endereço da API (`http://localhost:8080`) aparece em `src/api/client.js`, `src/utils/format.js` e
 `src/pages/Pastilhas.jsx`. Se o backend rodar em outro endereço, altere nesses três lugares.

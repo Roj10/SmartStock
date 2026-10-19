@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.smartstock.backend.dto.CalendarioUpdateRequest;
 import com.smartstock.backend.dto.ChecklistItemRequest;
@@ -31,13 +32,18 @@ public class ProjetoService {
     private final PastilhaRepository pastilhaRepository;
     private final MovimentacaoService movimentacaoService;
     private final VendaRepository vendaRepository;
+    private final SenhaAdminService senhaAdminService;
+    private final AnexoProjetoService anexoService;
 
     public ProjetoService(ProjetoRepository projetoRepository, PastilhaRepository pastilhaRepository,
-            MovimentacaoService movimentacaoService, VendaRepository vendaRepository) {
+            MovimentacaoService movimentacaoService, VendaRepository vendaRepository,
+            SenhaAdminService senhaAdminService, AnexoProjetoService anexoService) {
         this.projetoRepository = projetoRepository;
         this.pastilhaRepository = pastilhaRepository;
         this.movimentacaoService = movimentacaoService;
         this.vendaRepository = vendaRepository;
+        this.senhaAdminService = senhaAdminService;
+        this.anexoService = anexoService;
     }
 
     public List<Projeto> listarProgresso() {
@@ -53,16 +59,50 @@ public class ProjetoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Projeto não encontrado: " + id));
     }
 
-    public Projeto criar(ProjetoRequest request) {
+    /**
+     * Cria o projeto já com os arquivos anexados (novos e/ou copiados do projeto repetido).
+     * Se algum arquivo for recusado, o projeto não é criado.
+     */
+    @Transactional
+    public Projeto criar(ProjetoRequest request, List<MultipartFile> arquivos) {
         Projeto projeto = new Projeto();
         projeto.setStatus(StatusProjeto.AGUARDANDO);
         projeto.setDataCriacao(LocalDateTime.now());
+        anexoService.validar(projeto, arquivos);
         aplicar(projeto, request);
+        projeto = projetoRepository.save(projeto);
+        try {
+            anexoService.copiar(projeto, request.getAnexosCopiar());
+            anexoService.anexar(projeto, arquivos);
+        } catch (RuntimeException e) {
+            anexoService.apagarArquivosDoProjeto(projeto);
+            throw e;
+        }
+        return projeto;
+    }
+
+    /** Anexar arquivos a um projeto que já existe é uma edição: exige a senha de um administrador. */
+    @Transactional
+    public Projeto adicionarAnexos(Long id, List<MultipartFile> arquivos, String senhaAdmin) {
+        Projeto projeto = buscarPorId(id);
+        senhaAdminService.exigir(senhaAdmin, "anexar arquivos ao projeto");
+        anexoService.anexar(projeto, arquivos);
+        return projeto;
+    }
+
+    /** Remover um arquivo do projeto também exige a senha de um administrador. */
+    @Transactional
+    public Projeto removerAnexo(Long id, Long anexoId, String senhaAdmin) {
+        Projeto projeto = buscarPorId(id);
+        senhaAdminService.exigir(senhaAdmin, "remover arquivos do projeto");
+        anexoService.remover(projeto, anexoId);
         return projetoRepository.save(projeto);
     }
 
+    /** Editar um projeto existente exige a senha de um administrador. */
     public Projeto atualizar(Long id, ProjetoRequest request) {
         Projeto projeto = buscarPorId(id);
+        senhaAdminService.exigir(request.getSenhaAdmin(), "editar o projeto");
         aplicar(projeto, request);
         return projetoRepository.save(projeto);
     }
@@ -147,11 +187,14 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    /** Excluir um projeto exige a senha de um administrador. */
     @Transactional
-    public void excluir(Long id) {
+    public void excluir(Long id, String senhaAdmin) {
         Projeto projeto = buscarPorId(id);
+        senhaAdminService.exigir(senhaAdmin, "excluir o projeto");
         // vendas e planos já registrados continuam existindo, apenas sem o vínculo com o projeto
         vendaRepository.findByProjetoId(id).forEach(v -> v.setProjeto(null));
+        anexoService.apagarArquivosDoProjeto(projeto);
         projetoRepository.delete(projeto);
     }
 

@@ -517,6 +517,11 @@ h1, h2, h3 {
   color: #fff;
 }
 
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--text-muted);
@@ -2261,4 +2266,121 @@ h1, h2, h3 {
 
 .calendario-evento:hover {
   filter: brightness(1.08);
+}
+
+/* ---------- Arquivos dos projetos (Progresso) ---------- */
+.anexos-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.anexo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.anexo-item-novo {
+  border-style: dashed;
+}
+
+.anexo-item small {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.anexo-nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.anexo-icone {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--neutral);
+  background: var(--neutral-bg);
+}
+
+.anexo-icone-pdf {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.anexo-icone-cad {
+  color: var(--info);
+  background: var(--info-bg);
+}
+
+.anexo-icone-img {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.dropzone-compacta {
+  padding: 10px 12px;
+}
+
+.kanban-anexos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kanban-anexos li {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.anexo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 8px 3px 3px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.anexo-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.anexo-chip-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
 }

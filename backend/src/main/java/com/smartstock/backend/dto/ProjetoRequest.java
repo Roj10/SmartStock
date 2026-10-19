@@ -21,6 +21,12 @@ public class ProjetoRequest {
     @Valid
     private List<ProjetoMaterialRequest> materiais = new ArrayList<>();
 
+    /** Exigida só para editar um projeto existente (não para criar). Nunca é gravada. */
+    private String senhaAdmin;
+
+    /** Ao repetir um projeto: ids dos arquivos do projeto de origem que devem ser copiados para o novo. */
+    private List<Long> anexosCopiar = new ArrayList<>();
+
     public String getNome() {
         return nome;
     }
@@ -59,5 +65,21 @@ public class ProjetoRequest {
 
     public void setMateriais(List<ProjetoMaterialRequest> materiais) {
         this.materiais = materiais;
+    }
+
+    public String getSenhaAdmin() {
+        return senhaAdmin;
+    }
+
+    public void setSenhaAdmin(String senhaAdmin) {
+        this.senhaAdmin = senhaAdmin;
+    }
+
+    public List<Long> getAnexosCopiar() {
+        return anexosCopiar;
+    }
+
+    public void setAnexosCopiar(List<Long> anexosCopiar) {
+        this.anexosCopiar = anexosCopiar;
     }
 }
