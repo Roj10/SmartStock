@@ -75,6 +75,15 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // As fotos dos itens de exemplo ficam na pasta uploads deste computador. Se o banco já tiver os exemplos
+        // (por exemplo, rodando o sistema em outro computador ligado ao mesmo Supabase), as fotos são recolocadas.
+        garantirImagensDeExemplo();
+
+        // O banco é persistente: os dados de exemplo só são criados uma vez, quando o banco ainda está vazio.
+        // Assim, apagar os exemplos (projetos, mensagens...) não faz com que eles voltem ao reiniciar.
+        if (usuarioRepository.count() > 0) {
+            return;
+        }
         seedUsuarios();
         seedFornecedores();
         seedPastilhas();
@@ -441,6 +450,17 @@ public class DataSeeder implements CommandLineRunner {
      * Copia uma foto de exemplo (guardada em src/main/resources/seed-images, com os créditos em CREDITOS.md)
      * para a pasta de uploads, de onde o sistema serve as imagens dos produtos.
      */
+    private void garantirImagensDeExemplo() {
+        String prefixo = "/uploads/pastilhas/seed-";
+        for (Pastilha p : pastilhaRepository.findAll()) {
+            String url = p.getImagemUrl();
+            if (url != null && url.startsWith(prefixo)
+                    && !Files.exists(Path.of(uploadsDir, "pastilhas", url.substring(url.lastIndexOf('/') + 1)))) {
+                copiarImagemExemplo(url.substring(prefixo.length()));
+            }
+        }
+    }
+
     private String copiarImagemExemplo(String arquivo) {
         try (InputStream origem = getClass().getResourceAsStream("/seed-images/" + arquivo)) {
             if (origem == null) {

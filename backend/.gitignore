@@ -4,6 +4,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Senha do banco (Supabase) ###
+.env
+
 ### Uploads (imagens enviadas em tempo de execução) ###
 uploads/
 uploads-privado/

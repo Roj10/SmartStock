@@ -52,10 +52,12 @@ vê o lado financeiro (preços por fornecedor, vendas e margem) e conversa entre
 | **Node.js** (com npm) | **20.19+** ou **22.12+** (testado com a versão 24) | Roda a interface (frontend) |
 | **Git** | qualquer recente | Baixar o projeto |
 | Navegador | Chrome, Edge ou Firefox atuais | Usar o sistema |
-| Internet | só na primeira vez | Baixar as dependências (Maven e npm) |
+| Internet | sempre | Baixar as dependências (Maven e npm) e acessar o banco no Supabase |
+| Conta no **Supabase** | plano gratuito serve | Banco de dados PostgreSQL na nuvem |
 
-**Não é preciso instalar Maven nem banco de dados:** o projeto traz o *Maven Wrapper* (`mvnw`), que baixa o Maven
-sozinho na primeira execução, e usa um banco **H2 em memória** que já vem embutido.
+**Não é preciso instalar Maven nem banco de dados no computador:** o projeto traz o *Maven Wrapper* (`mvnw`), que
+baixa o Maven sozinho na primeira execução, e o banco é um **PostgreSQL no Supabase** (na nuvem). Os dados ficam salvos
+lá e não se perdem ao reiniciar. Para rodar sem internet existe o perfil `h2` (banco em memória, veja o passo 4.2).
 
 Portas usadas: **8080** (backend) e **5173** (frontend). Elas precisam estar livres.
 
@@ -108,6 +110,20 @@ cd SmartStock
 
 ### 4.2 Terminal 1 – Backend (porta 8080)
 
+**Antes da primeira vez: a senha do banco.** O backend se conecta ao Supabase pelo *Session pooler*
+(`aws-0-us-east-2.pooler.supabase.com`, usuário `postgres.brlmkluxhgeaavzaojis`). A senha não fica no código, porque o
+repositório é público: copie `backend/.env.example` para `backend/.env` e coloque nele a senha do banco
+(Supabase › *Project Settings* › *Database*). O arquivo `.env` é ignorado pelo git.
+
+```powershell
+cd backend
+copy .env.example .env      # macOS/Linux: cp .env.example .env
+notepad .env                # troque "coloque-a-senha-do-banco-aqui" pela senha
+```
+
+Na primeira execução o backend cria as tabelas (no schema `smartstock`) e grava os dados de exemplo. Nas próximas, ele
+usa o que já está no banco: os exemplos não são recriados.
+
 **Windows (PowerShell):**
 
 ```powershell
@@ -126,7 +142,10 @@ java -jar target/backend-0.0.1-SNAPSHOT.jar
 ```
 
 Aguarde aparecer a mensagem `Started BackendApplication`. A primeira execução demora mais, porque baixa as
-dependências. **Rode sempre a partir da pasta `backend`** (é onde ficam as pastas de imagens).
+dependências. **Rode sempre a partir da pasta `backend`** (é onde ficam o `.env` e as pastas de imagens).
+
+**Sem internet / só para testar:** `java -jar target/backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=h2` usa um
+banco em memória, que volta aos dados de exemplo a cada reinício e não toca no Supabase.
 
 ### 4.3 Terminal 2 – Frontend (porta 5173)
 
@@ -145,8 +164,8 @@ Acesse **http://localhost:5173** e entre com uma das contas da próxima seção.
 ### 4.5 Parar e reiniciar
 
 - Para parar cada programa, use **Ctrl + C** no terminal dele.
-- **Os dados voltam ao estado de exemplo a cada reinício do backend**, porque o banco fica na memória. Isso é útil
-  para demonstrações (basta reiniciar para "zerar" os testes).
+- **Os dados ficam salvos no Supabase**: reiniciar o backend não apaga nada. Para voltar aos dados de exemplo, apague o
+  schema `smartstock` no Supabase (*SQL Editor*: `drop schema smartstock cascade;`) e inicie o backend de novo.
 - Depois de alterar o código do backend, rode de novo o `clean package` e o `java -jar`. Se o `clean` falhar dizendo
   que o arquivo `.jar` está em uso, pare o backend antes (Ctrl + C).
 
@@ -180,7 +199,7 @@ mostradas: o administrador só pode redefini-las.
 ## 7. Como o sistema funciona por dentro
 
 ```
- Navegador (React, porta 5173)  ──HTTP/JSON + token JWT──▶  API Spring Boot (porta 8080)  ──▶  Banco H2 (memória)
+ Navegador (React, porta 5173)  ──HTTP/JSON + token JWT──▶  API Spring Boot (porta 8080)  ──▶  PostgreSQL (Supabase)
         telas e formulários                                  regras de negócio e permissões      + pastas de imagens
 ```
 
@@ -188,8 +207,9 @@ mostradas: o administrador só pode redefini-las.
   conta não pode acessar.
 - **Backend (Spring Boot):** valida o login (JWT), confere a permissão de cada rota e aplica as regras do negócio.
   Mesmo que alguém tente chamar a API "na mão", sem a permissão recebe erro 403.
-- **Banco de dados (H2 em memória):** guarda usuários, itens, movimentações, projetos, vendas e mensagens. É recriado,
-  com dados de exemplo, a cada início do backend (veja [Próximos passos](#13-próximos-passos-e-créditos)).
+- **Banco de dados (PostgreSQL no Supabase):** guarda usuários, itens, movimentações, projetos, vendas e mensagens, no
+  schema `smartstock` (fora do `public`, que o Supabase expõe pela API REST dele). As tabelas são criadas e atualizadas
+  pelo próprio backend; os dados de exemplo entram só quando o banco está vazio.
 - **Imagens e arquivos:** fotos de itens ficam em `backend/uploads/`; imagens das conversas e arquivos dos projetos
   ficam em `backend/uploads-privado/`, sem link público.
 
@@ -305,8 +325,8 @@ Todas as rotas começam com `/api` e, exceto o login, exigem o token JWT no cabe
 | Mensagens | `GET /mensagens/contatos`, `/nao-lidas`, `GET/POST /mensagens/conversa/{usuarioId}`, `GET /mensagens/{id}/imagem` | conta logada |
 | Usuários | `GET/POST /usuarios`, `PUT/DELETE /usuarios/{id}` | Administrador ou "Usuários" |
 
-Console do banco (opcional, para inspecionar): `http://localhost:8080/h2-console` — JDBC URL `jdbc:h2:mem:smartstock`,
-usuário `sa`, senha em branco.
+Para ver os dados: no Supabase, *Table Editor* (escolha o schema `smartstock`) ou *SQL Editor*. No perfil `h2` existe o
+console em `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:smartstock`, usuário `sa`, senha em branco).
 
 ## 11. Configurações
 
@@ -315,6 +335,7 @@ usuário `sa`, senha em branco.
 | Chave | O que controla |
 |-------|----------------|
 | `server.port` | Porta do servidor (padrão 8080) |
+| `spring.datasource.*` | Conexão com o Supabase. A senha vem de `SUPABASE_DB_PASSWORD` (arquivo `backend/.env` ou variável de ambiente); endereço e usuário podem ser trocados com `SUPABASE_DB_URL` e `SUPABASE_DB_USER` |
 | `jwt.secret` / `jwt.expiration-ms` | Chave do token de login e validade (padrão 24 h). **Troque a chave em uso real.** |
 | `app.uploads.dir` | Pasta das fotos de itens (padrão `uploads`) |
 | `app.mensagens.dir` | Pasta privada das imagens das conversas |
@@ -338,14 +359,17 @@ estão em [CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
 | `npm run dev` falha logo de início | Confira `node -v` (precisa de 20.19+ ou 22.12+; o Node 21 não serve) e rode `npm install` de novo. |
 | `mvnw: Permission denied` (macOS/Linux) | Rode `chmod +x mvnw`. |
 | `clean` falha: arquivo `.jar` em uso (Windows) | Pare o backend (Ctrl + C) e rode o comando de novo. |
-| Dados que eu cadastrei sumiram | É esperado: o banco é em memória e volta ao exemplo quando o backend reinicia. |
+| `Could not resolve placeholder 'SUPABASE_DB_PASSWORD'` | Falta o arquivo `backend/.env` (passo 4.2) ou o backend não foi iniciado de dentro da pasta `backend`. |
+| `password authentication failed` | Senha errada no `.env`. Confira no Supabase (*Project Settings › Database*) ou redefina a senha lá. Se a senha tiver `\`, escreva `\\`. |
+| `Connection refused`, `timeout` ou `UnknownHost` ao iniciar | Sem internet ou projeto do Supabase pausado (o plano gratuito pausa após dias sem uso: entre no painel e clique em *Restore*). |
+| Dados que eu cadastrei sumiram | Confira se o backend não foi iniciado com o perfil `h2` (banco em memória). |
 | Fotos dos itens não aparecem | Rode o backend **de dentro da pasta `backend`**, para que as pastas de imagens fiquem no lugar certo. |
 | Sessão perdida ao abrir outra aba | O login é por aba (de propósito). Entre de novo na aba nova. |
 
 ## 13. Próximos passos e créditos
 
 **Próximos passos sugeridos**
-- Trocar o H2 em memória por um banco persistente (PostgreSQL ou MySQL) antes de qualquer uso real.
+- Guardar as fotos e os anexos no *Supabase Storage* (hoje ficam nas pastas `uploads` do computador que roda o backend).
 - Relatórios de consumo por período (a estrutura de movimentações já suporta consultas por data).
 - Integração futura com ERP/compras e renomear "Pastilhas" para algo mais geral (ex.: *Materiais*).
 
