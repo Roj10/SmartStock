@@ -9,7 +9,9 @@ const EMPTY_FORM = { codigo: '', descricao: '', fabricanteId: '', estoqueMinimo:
 const PALAVRAS_GALERIA = ['imagem', 'imagens'];
 
 function urlImagem(imagemUrl) {
-  return imagemUrl ? `${API_ORIGIN}${imagemUrl}` : null;
+  if (!imagemUrl) return null;
+  // fotos no Supabase Storage já vêm com o endereço completo
+  return /^https?:\/\//.test(imagemUrl) ? imagemUrl : `${API_ORIGIN}${imagemUrl}`;
 }
 
 // Barra de estoque: mostra a quantidade atual em relação ao dobro do mínimo (cheia = folga confortável).

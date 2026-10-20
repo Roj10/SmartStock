@@ -2,16 +2,13 @@ package com.smartstock.backend.service;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -30,6 +27,7 @@ import com.smartstock.backend.model.Mensagem;
 import com.smartstock.backend.model.Usuario;
 import com.smartstock.backend.repository.MensagemRepository;
 import com.smartstock.backend.repository.UsuarioRepository;
+import com.smartstock.backend.storage.Armazenamento;
 
 @Service
 public class MensagemService {
@@ -42,12 +40,14 @@ public class MensagemService {
     private final MensagemRepository mensagemRepository;
     private final UsuarioRepository usuarioRepository;
 
-    @Value("${app.mensagens.dir}")
-    private String mensagensDir;
+    /** As imagens das conversas ficam no bucket privado "mensagens" do Supabase Storage. */
+    private final Armazenamento armazenamento;
 
-    public MensagemService(MensagemRepository mensagemRepository, UsuarioRepository usuarioRepository) {
+    public MensagemService(MensagemRepository mensagemRepository, UsuarioRepository usuarioRepository,
+            Armazenamento armazenamento) {
         this.mensagemRepository = mensagemRepository;
         this.usuarioRepository = usuarioRepository;
+        this.armazenamento = armazenamento;
     }
 
     /** Todas as outras contas, com a última mensagem trocada e quantas ainda não foram lidas. */
@@ -122,13 +122,7 @@ public class MensagemService {
         }
 
         String nomeArquivo = UUID.randomUUID() + tipo.extensao;
-        try {
-            Path diretorio = Path.of(mensagensDir);
-            Files.createDirectories(diretorio);
-            Files.write(diretorio.resolve(nomeArquivo), conteudo);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao salvar a imagem da mensagem.", e);
-        }
+        armazenamento.enviar(Armazenamento.MENSAGENS, nomeArquivo, conteudo, tipo.mime);
 
         Mensagem mensagem = nova(eu, destinatario, legenda == null ? "" : legenda);
         mensagem.setImagemArquivo(nomeArquivo);
@@ -147,11 +141,7 @@ public class MensagemService {
                 // mesma resposta para "não existe" e "não é sua": não revela mensagens de terceiros
                 .orElseThrow(() -> new ResourceNotFoundException("Imagem não encontrada."));
 
-        Path arquivo = Path.of(mensagensDir).resolve(mensagem.getImagemArquivo()).normalize();
-        if (!arquivo.startsWith(Path.of(mensagensDir).normalize()) || !Files.isReadable(arquivo)) {
-            throw new ResourceNotFoundException("Imagem não encontrada.");
-        }
-        Resource recurso = new FileSystemResource(arquivo);
+        Resource recurso = new ByteArrayResource(armazenamento.baixar(Armazenamento.MENSAGENS, mensagem.getImagemArquivo()));
         return new ImagemMensagem(recurso, mensagem.getImagemTipo());
     }
 
@@ -169,11 +159,7 @@ public class MensagemService {
     @Transactional
     public void excluirConversasDoUsuario(Long usuarioId) {
         for (Mensagem m : mensagemRepository.comImagemDoUsuario(usuarioId)) {
-            try {
-                Files.deleteIfExists(Path.of(mensagensDir).resolve(m.getImagemArquivo()));
-            } catch (IOException ignored) {
-                // melhor esforço: não impede a exclusão da conta
-            }
+            armazenamento.apagar(Armazenamento.MENSAGENS, m.getImagemArquivo());
         }
         mensagemRepository.excluirDoUsuario(usuarioId);
     }

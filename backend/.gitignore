@@ -10,6 +10,7 @@ target/
 ### Uploads (imagens enviadas em tempo de execução) ###
 uploads/
 uploads-privado/
+armazenamento-local/
 
 ### STS ###
 .apt_generated

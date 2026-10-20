@@ -38,6 +38,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.PAYLOAD_TOO_LARGE, "O arquivo é grande demais. O limite é de 20 MB por arquivo (5 MB para imagens).");
     }
 
+    /** Falha ao ler/gravar arquivos (por exemplo, sem conexão com o Supabase Storage). */
+    @ExceptionHandler(java.io.UncheckedIOException.class)
+    public ResponseEntity<Map<String, Object>> handleArquivo(java.io.UncheckedIOException ex) {
+        return build(HttpStatus.BAD_GATEWAY, ex.getMessage() != null ? ex.getMessage() : "Falha ao acessar os arquivos.");
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());

@@ -3,16 +3,12 @@ package com.smartstock.backend.config;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -32,6 +28,7 @@ import com.smartstock.backend.model.Mensagem;
 import com.smartstock.backend.model.ModeloProjeto;
 import com.smartstock.backend.model.Usuario;
 import com.smartstock.backend.model.Venda;
+import com.smartstock.backend.storage.Armazenamento;
 import com.smartstock.backend.repository.FornecedorProdutoRepository;
 import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
@@ -54,14 +51,13 @@ public class DataSeeder implements CommandLineRunner {
     private final VendaRepository vendaRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.uploads.dir}")
-    private String uploadsDir;
+    private final Armazenamento armazenamento;
 
     public DataSeeder(UsuarioRepository usuarioRepository, FornecedorRepository fornecedorRepository,
             PastilhaRepository pastilhaRepository, ProjetoRepository projetoRepository,
             FornecedorProdutoRepository fornecedorProdutoRepository, VendaRepository vendaRepository,
             MensagemRepository mensagemRepository, ModeloProjetoRepository modeloProjetoRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder, Armazenamento armazenamento) {
         this.usuarioRepository = usuarioRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.pastilhaRepository = pastilhaRepository;
@@ -71,14 +67,11 @@ public class DataSeeder implements CommandLineRunner {
         this.mensagemRepository = mensagemRepository;
         this.modeloProjetoRepository = modeloProjetoRepository;
         this.passwordEncoder = passwordEncoder;
+        this.armazenamento = armazenamento;
     }
 
     @Override
     public void run(String... args) {
-        // As fotos dos itens de exemplo ficam na pasta uploads deste computador. Se o banco já tiver os exemplos
-        // (por exemplo, rodando o sistema em outro computador ligado ao mesmo Supabase), as fotos são recolocadas.
-        garantirImagensDeExemplo();
-
         // O banco é persistente: os dados de exemplo só são criados uma vez, quando o banco ainda está vazio.
         // Assim, apagar os exemplos (projetos, mensagens...) não faz com que eles voltem ao reiniciar.
         if (usuarioRepository.count() > 0) {
@@ -447,32 +440,19 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     /**
-     * Copia uma foto de exemplo (guardada em src/main/resources/seed-images, com os créditos em CREDITOS.md)
-     * para a pasta de uploads, de onde o sistema serve as imagens dos produtos.
+     * Envia uma foto de exemplo (guardada em src/main/resources/seed-images, com os créditos em CREDITOS.md)
+     * para o bucket público "pastilhas" do Supabase Storage.
      */
-    private void garantirImagensDeExemplo() {
-        String prefixo = "/uploads/pastilhas/seed-";
-        for (Pastilha p : pastilhaRepository.findAll()) {
-            String url = p.getImagemUrl();
-            if (url != null && url.startsWith(prefixo)
-                    && !Files.exists(Path.of(uploadsDir, "pastilhas", url.substring(url.lastIndexOf('/') + 1)))) {
-                copiarImagemExemplo(url.substring(prefixo.length()));
-            }
-        }
-    }
-
     private String copiarImagemExemplo(String arquivo) {
         try (InputStream origem = getClass().getResourceAsStream("/seed-images/" + arquivo)) {
             if (origem == null) {
                 return null;
             }
-            Path diretorio = Path.of(uploadsDir, "pastilhas");
-            Files.createDirectories(diretorio);
             String nomeArquivo = "seed-" + arquivo;
-            Files.copy(origem, diretorio.resolve(nomeArquivo), StandardCopyOption.REPLACE_EXISTING);
-            return "/uploads/pastilhas/" + nomeArquivo;
+            armazenamento.enviar(Armazenamento.PASTILHAS, nomeArquivo, origem.readAllBytes(), "image/jpeg");
+            return armazenamento.urlPublica(Armazenamento.PASTILHAS, nomeArquivo);
         } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao copiar a imagem de exemplo " + arquivo, e);
+            throw new UncheckedIOException("Falha ao ler a imagem de exemplo " + arquivo, e);
         }
     }
 }

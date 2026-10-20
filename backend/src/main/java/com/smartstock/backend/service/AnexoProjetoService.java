@@ -1,18 +1,14 @@
 package com.smartstock.backend.service;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,10 +18,12 @@ import com.smartstock.backend.exception.ResourceNotFoundException;
 import com.smartstock.backend.model.Projeto;
 import com.smartstock.backend.model.ProjetoAnexo;
 import com.smartstock.backend.repository.ProjetoAnexoRepository;
+import com.smartstock.backend.storage.Armazenamento;
+import com.smartstock.backend.storage.TipoArquivo;
 
 /**
  * Arquivos anexados aos projetos do Progresso (PDF, desenhos de CAD, fotos, planilhas...).
- * Ficam numa pasta privada e só são entregues pela API, nunca por link público.
+ * Ficam no bucket privado "projetos" do Supabase Storage e só são entregues pela API, nunca por link público.
  */
 @Service
 public class AnexoProjetoService {
@@ -42,12 +40,11 @@ public class AnexoProjetoService {
             "zip", "rar", "7z");
 
     private final ProjetoAnexoRepository anexoRepository;
+    private final Armazenamento armazenamento;
 
-    @Value("${app.projetos.dir}")
-    private String projetosDir;
-
-    public AnexoProjetoService(ProjetoAnexoRepository anexoRepository) {
+    public AnexoProjetoService(ProjetoAnexoRepository anexoRepository, Armazenamento armazenamento) {
         this.anexoRepository = anexoRepository;
+        this.armazenamento = armazenamento;
     }
 
     /** Confere todos os arquivos antes de gravar qualquer coisa: se um for inválido, nenhum é aceito. */
@@ -68,29 +65,28 @@ public class AnexoProjetoService {
         }
     }
 
-    /** Grava os arquivos na pasta privada e os liga ao projeto (que precisa estar salvo). */
+    /** Envia os arquivos para o Storage e os liga ao projeto (que precisa estar salvo). */
     public void anexar(Projeto projeto, List<MultipartFile> arquivos) {
         validar(projeto, arquivos);
-        List<Path> gravados = new ArrayList<>();
+        List<String> enviados = new ArrayList<>();
         try {
             for (MultipartFile arquivo : naoVazios(arquivos)) {
                 String nome = nomeLimpo(arquivo.getOriginalFilename());
-                String tipo;
-                try (InputStream in = arquivo.getInputStream()) {
-                    tipo = tipoPeloConteudo(in.readNBytes(12));
-                }
+                byte[] conteudo = arquivo.getBytes();
+                String tipo = TipoArquivo.detectar(conteudo);
                 if (extensao(nome).equals("pdf") && !tipo.equals("application/pdf")) {
                     throw new BusinessException("O arquivo \"" + nome + "\" não é um PDF válido.");
                 }
-                Path destino = gravar(arquivo, extensao(nome));
-                gravados.add(destino);
-                adicionar(projeto, nome, destino.getFileName().toString(), tipo, arquivo.getSize());
+                String guardado = UUID.randomUUID() + "." + extensao(nome);
+                armazenamento.enviar(Armazenamento.PROJETOS, guardado, conteudo, tipo);
+                enviados.add(guardado);
+                adicionar(projeto, nome, guardado, tipo, arquivo.getSize());
             }
         } catch (IOException e) {
-            apagar(gravados);
-            throw new UncheckedIOException("Falha ao salvar o arquivo do projeto.", e);
+            apagar(enviados);
+            throw new UncheckedIOException("Falha ao ler o arquivo enviado.", e);
         } catch (RuntimeException e) {
-            apagar(gravados);
+            apagar(enviados);
             throw e;
         }
     }
@@ -107,23 +103,15 @@ public class AnexoProjetoService {
             ProjetoAnexo origem = anexoRepository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException("Arquivo não encontrado: " + id));
             String novoNome = UUID.randomUUID() + "." + extensao(origem.getNomeOriginal());
-            try {
-                Files.createDirectories(pasta());
-                Files.copy(caminho(origem.getArquivo()), pasta().resolve(novoNome));
-            } catch (IOException e) {
-                throw new UncheckedIOException("Falha ao copiar o arquivo \"" + origem.getNomeOriginal() + "\".", e);
-            }
+            armazenamento.copiar(Armazenamento.PROJETOS, origem.getArquivo(), novoNome);
             adicionar(destino, origem.getNomeOriginal(), novoNome, origem.getTipo(), origem.getTamanho());
         }
     }
 
     public ArquivoAnexo abrir(Long projetoId, Long anexoId) {
         ProjetoAnexo anexo = buscar(projetoId, anexoId);
-        Path arquivo = caminho(anexo.getArquivo());
-        if (!Files.isReadable(arquivo)) {
-            throw new ResourceNotFoundException("Arquivo não encontrado.");
-        }
-        return new ArquivoAnexo(new FileSystemResource(arquivo), anexo.getNomeOriginal(), anexo.getTipo(),
+        byte[] conteudo = armazenamento.baixar(Armazenamento.PROJETOS, anexo.getArquivo());
+        return new ArquivoAnexo(new ByteArrayResource(conteudo), anexo.getNomeOriginal(), anexo.getTipo(),
                 podeAbrirNoNavegador(anexo.getTipo()));
     }
 
@@ -153,43 +141,12 @@ public class AnexoProjetoService {
         projeto.getAnexos().add(anexoRepository.save(anexo));
     }
 
-    private Path gravar(MultipartFile arquivo, String extensao) throws IOException {
-        Files.createDirectories(pasta());
-        Path destino = pasta().resolve(UUID.randomUUID() + "." + extensao);
-        try (InputStream in = arquivo.getInputStream()) {
-            Files.copy(in, destino);
-        }
-        return destino;
-    }
-
-    private Path pasta() {
-        return Path.of(projetosDir).toAbsolutePath().normalize();
-    }
-
-    private Path caminho(String arquivo) {
-        Path p = pasta().resolve(arquivo).normalize();
-        if (!p.startsWith(pasta())) {
-            throw new ResourceNotFoundException("Arquivo não encontrado.");
-        }
-        return p;
-    }
-
     private void apagarArquivo(String arquivo) {
-        try {
-            Files.deleteIfExists(caminho(arquivo));
-        } catch (IOException | RuntimeException ignored) {
-            // melhor esforço: não impede a operação principal
-        }
+        armazenamento.apagar(Armazenamento.PROJETOS, arquivo);
     }
 
-    private void apagar(List<Path> arquivos) {
-        for (Path p : arquivos) {
-            try {
-                Files.deleteIfExists(p);
-            } catch (IOException ignored) {
-                // melhor esforço
-            }
-        }
+    private void apagar(List<String> arquivos) {
+        arquivos.forEach(this::apagarArquivo);
     }
 
     private static List<MultipartFile> naoVazios(List<MultipartFile> arquivos) {
@@ -213,30 +170,6 @@ public class AnexoProjetoService {
     static String extensao(String nome) {
         int ponto = nome.lastIndexOf('.');
         return ponto < 0 ? "" : nome.substring(ponto + 1).toLowerCase(Locale.ROOT);
-    }
-
-    /**
-     * O tipo é decidido pelo conteúdo, não pelo nome: só PDF e imagens verdadeiras abrem no navegador;
-     * todo o resto é entregue como download.
-     */
-    static String tipoPeloConteudo(byte[] b) {
-        if (b.length >= 4 && b[0] == '%' && b[1] == 'P' && b[2] == 'D' && b[3] == 'F') {
-            return "application/pdf";
-        }
-        if (b.length >= 4 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G') {
-            return "image/png";
-        }
-        if (b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
-            return "image/jpeg";
-        }
-        if (b.length >= 4 && b[0] == 'G' && b[1] == 'I' && b[2] == 'F' && b[3] == '8') {
-            return "image/gif";
-        }
-        if (b.length >= 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F' && b[8] == 'W'
-                && b[9] == 'E' && b[10] == 'B' && b[11] == 'P') {
-            return "image/webp";
-        }
-        return "application/octet-stream";
     }
 
     private static boolean podeAbrirNoNavegador(String tipo) {

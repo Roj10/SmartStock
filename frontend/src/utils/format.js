@@ -11,6 +11,9 @@ export function dataBr(iso) {
   return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR');
 }
 
+// As fotos dos itens ficam no Supabase Storage e já vêm com o endereço completo (https://...).
+// Endereços relativos (/arquivos/...) só aparecem no perfil "h2" do backend, que serve as fotos ele mesmo.
 export function urlImagem(imagemUrl) {
-  return imagemUrl ? `http://localhost:8080${imagemUrl}` : null;
+  if (!imagemUrl) return null;
+  return /^https?:\/\//.test(imagemUrl) ? imagemUrl : `http://localhost:8080${imagemUrl}`;
 }

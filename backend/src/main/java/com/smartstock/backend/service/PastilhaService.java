@@ -2,13 +2,9 @@ package com.smartstock.backend.service;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,27 +17,28 @@ import com.smartstock.backend.model.Pastilha;
 import com.smartstock.backend.repository.FornecedorProdutoRepository;
 import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
+import com.smartstock.backend.storage.Armazenamento;
+import com.smartstock.backend.storage.TipoArquivo;
 
 @Service
 public class PastilhaService {
-
-    private static final List<String> TIPOS_PERMITIDOS = List.of("image/png", "image/jpeg", "image/webp", "image/gif");
 
     private final PastilhaRepository pastilhaRepository;
     private final FornecedorRepository fornecedorRepository;
     private final FornecedorProdutoRepository fornecedorProdutoRepository;
 
-    @Value("${app.uploads.dir}")
-    private String uploadsDir;
+    private final Armazenamento armazenamento;
 
     private final ModeloProjetoService modeloProjetoService;
 
     public PastilhaService(PastilhaRepository pastilhaRepository, FornecedorRepository fornecedorRepository,
-            FornecedorProdutoRepository fornecedorProdutoRepository, ModeloProjetoService modeloProjetoService) {
+            FornecedorProdutoRepository fornecedorProdutoRepository, ModeloProjetoService modeloProjetoService,
+            Armazenamento armazenamento) {
         this.pastilhaRepository = pastilhaRepository;
         this.fornecedorRepository = fornecedorRepository;
         this.fornecedorProdutoRepository = fornecedorProdutoRepository;
         this.modeloProjetoService = modeloProjetoService;
+        this.armazenamento = armazenamento;
     }
 
     public List<Pastilha> listar() {
@@ -97,26 +94,24 @@ public class PastilhaService {
         if (arquivo.getSize() > 5L * 1024 * 1024) {
             throw new BusinessException("A imagem é grande demais. O limite é de 5 MB.");
         }
-        if (!TIPOS_PERMITIDOS.contains(arquivo.getContentType())) {
+        byte[] conteudo;
+        try {
+            conteudo = arquivo.getBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Falha ao ler a imagem enviada.", e);
+        }
+        // o tipo vem do conteúdo do arquivo, não do nome nem do que o navegador informou
+        String tipo = TipoArquivo.detectar(conteudo);
+        if (!TipoArquivo.ehImagem(tipo)) {
             throw new BusinessException("Formato de imagem não suportado. Use PNG, JPEG, WEBP ou GIF.");
         }
 
+        // fotos dos itens ficam no bucket público "pastilhas" do Supabase Storage
+        String nomeArquivo = UUID.randomUUID() + TipoArquivo.extensao(tipo);
+        armazenamento.enviar(Armazenamento.PASTILHAS, nomeArquivo, conteudo, tipo);
         removerArquivoImagem(pastilha);
-
-        try {
-            Path diretorio = Path.of(uploadsDir, "pastilhas");
-            Files.createDirectories(diretorio);
-
-            String extensao = extensaoDoArquivo(arquivo.getOriginalFilename());
-            String nomeArquivo = UUID.randomUUID() + extensao;
-            Path destino = diretorio.resolve(nomeArquivo);
-            Files.copy(arquivo.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
-
-            pastilha.setImagemUrl("/uploads/pastilhas/" + nomeArquivo);
-            return pastilhaRepository.save(pastilha);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Falha ao salvar a imagem da pastilha.", e);
-        }
+        pastilha.setImagemUrl(armazenamento.urlPublica(Armazenamento.PASTILHAS, nomeArquivo));
+        return pastilhaRepository.save(pastilha);
     }
 
     public Pastilha removerImagem(Long id) {
@@ -127,23 +122,9 @@ public class PastilhaService {
     }
 
     private void removerArquivoImagem(Pastilha pastilha) {
-        if (pastilha.getImagemUrl() == null) {
-            return;
+        if (pastilha.getImagemUrl() != null) {
+            armazenamento.apagar(Armazenamento.PASTILHAS, Armazenamento.nomeNaUrl(pastilha.getImagemUrl()));
         }
-        try {
-            String nomeArquivo = pastilha.getImagemUrl().substring(pastilha.getImagemUrl().lastIndexOf('/') + 1);
-            Path arquivo = Path.of(uploadsDir, "pastilhas", nomeArquivo);
-            Files.deleteIfExists(arquivo);
-        } catch (IOException ignored) {
-            // melhor esforço: não impede a operação principal caso o arquivo não possa ser removido
-        }
-    }
-
-    private String extensaoDoArquivo(String nomeOriginal) {
-        if (nomeOriginal == null || !nomeOriginal.contains(".")) {
-            return "";
-        }
-        return nomeOriginal.substring(nomeOriginal.lastIndexOf('.'));
     }
 
     private void aplicar(Pastilha pastilha, PastilhaRequest request) {

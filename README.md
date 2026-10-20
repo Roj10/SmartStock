@@ -110,19 +110,22 @@ cd SmartStock
 
 ### 4.2 Terminal 1 – Backend (porta 8080)
 
-**Antes da primeira vez: a senha do banco.** O backend se conecta ao Supabase pelo *Session pooler*
-(`aws-0-us-east-2.pooler.supabase.com`, usuário `postgres.brlmkluxhgeaavzaojis`). A senha não fica no código, porque o
-repositório é público: copie `backend/.env.example` para `backend/.env` e coloque nele a senha do banco
-(Supabase › *Project Settings* › *Database*). O arquivo `.env` é ignorado pelo git.
+**Antes da primeira vez: o arquivo `.env`.** O backend usa duas coisas do Supabase que não ficam no código, porque o
+repositório é público: a **senha do banco** (*Project Settings › Database*) e a **chave secreta** do projeto
+(*Project Settings › API Keys › Secret keys*, começa com `sb_secret_`), usada para guardar fotos e arquivos no Supabase
+Storage. Copie `backend/.env.example` para `backend/.env` e preencha as duas. O `.env` é ignorado pelo git. A conexão com
+o banco é pelo *Session pooler* (`aws-0-us-east-2.pooler.supabase.com`, usuário `postgres.brlmkluxhgeaavzaojis`).
 
 ```powershell
 cd backend
 copy .env.example .env      # macOS/Linux: cp .env.example .env
-notepad .env                # troque "coloque-a-senha-do-banco-aqui" pela senha
+notepad .env                # preencha SUPABASE_DB_PASSWORD e SUPABASE_SERVICE_KEY
 ```
 
-Na primeira execução o backend cria as tabelas (no schema `smartstock`) e grava os dados de exemplo. Nas próximas, ele
-usa o que já está no banco: os exemplos não são recriados.
+Na primeira execução o backend cria as tabelas (no schema `smartstock`), os buckets do Storage (`pastilhas`, `mensagens`
+e `projetos`) e grava os dados de exemplo. Nas próximas, ele usa o que já está lá: os exemplos não são recriados. Se
+ainda houver arquivos de versões antigas nas pastas `backend/uploads` e `backend/uploads-privado`, eles são enviados
+ao Storage e apagados do computador (só depois de enviados com sucesso).
 
 **Windows (PowerShell):**
 
@@ -142,7 +145,7 @@ java -jar target/backend-0.0.1-SNAPSHOT.jar
 ```
 
 Aguarde aparecer a mensagem `Started BackendApplication`. A primeira execução demora mais, porque baixa as
-dependências. **Rode sempre a partir da pasta `backend`** (é onde ficam o `.env` e as pastas de imagens).
+dependências. **Rode sempre a partir da pasta `backend`** (é onde fica o `.env`).
 
 **Sem internet / só para testar:** `java -jar target/backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=h2` usa um
 banco em memória, que volta aos dados de exemplo a cada reinício e não toca no Supabase.
@@ -200,7 +203,7 @@ mostradas: o administrador só pode redefini-las.
 
 ```
  Navegador (React, porta 5173)  ──HTTP/JSON + token JWT──▶  API Spring Boot (porta 8080)  ──▶  PostgreSQL (Supabase)
-        telas e formulários                                  regras de negócio e permissões      + pastas de imagens
+        telas e formulários                                  regras de negócio e permissões      + Supabase Storage
 ```
 
 - **Frontend (React):** só mostra as telas e chama a API. Guarda o token de login e esconde do menu as abas que a
@@ -210,8 +213,9 @@ mostradas: o administrador só pode redefini-las.
 - **Banco de dados (PostgreSQL no Supabase):** guarda usuários, itens, movimentações, projetos, vendas e mensagens, no
   schema `smartstock` (fora do `public`, que o Supabase expõe pela API REST dele). As tabelas são criadas e atualizadas
   pelo próprio backend; os dados de exemplo entram só quando o banco está vazio.
-- **Imagens e arquivos:** fotos de itens ficam em `backend/uploads/`; imagens das conversas e arquivos dos projetos
-  ficam em `backend/uploads-privado/`, sem link público.
+- **Imagens e arquivos (Supabase Storage):** fotos dos itens ficam no bucket público `pastilhas` (abrem direto pelo
+  endereço). Imagens das conversas e arquivos dos projetos ficam nos buckets **privados** `mensagens` e `projetos`: só o
+  backend lê, com a chave secreta, e entrega a quem tem permissão. O tipo de cada arquivo é conferido pelo conteúdo.
 
 **Caminho de um pedido (ordem de produção):**
 
@@ -253,8 +257,8 @@ Aguardando início → Em produção → Em estoque → Pronto para entrega ─�
   imagens, documentos, planilhas ou ZIP — arrastando ou clicando, vários de uma vez, até 20 MB cada e 20 por projeto.
   Os arquivos aparecem no card: PDF e imagens abrem numa nova aba; os demais são baixados. Ao **Repetir** um projeto,
   os arquivos vêm junto (dá para tirar algum antes de salvar). Incluir ou remover arquivos de um projeto que já existe
-  é feito pelo **Editar** e, como toda edição, pede a senha do administrador. Os arquivos ficam em
-  `backend/uploads-privado/projetos/`, sem link público: só quem tem acesso ao Progresso consegue abri-los.
+  é feito pelo **Editar** e, como toda edição, pede a senha do administrador. Os arquivos ficam no bucket privado
+  `projetos` do Supabase Storage, sem link público: só quem tem acesso ao Progresso consegue abri-los.
 - **Editar e excluir exigem a senha do administrador:** ao editar um projeto, o formulário só salva com a senha de uma
   conta administradora; ao excluir, ela é pedida num pop-up. A senha é conferida no servidor. Criar, repetir, avançar
   ou voltar etapas, marcar o checklist e enviar o pedido continuam sem senha.
@@ -337,9 +341,8 @@ console em `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:smartstock`
 | `server.port` | Porta do servidor (padrão 8080) |
 | `spring.datasource.*` | Conexão com o Supabase. A senha vem de `SUPABASE_DB_PASSWORD` (arquivo `backend/.env` ou variável de ambiente); endereço e usuário podem ser trocados com `SUPABASE_DB_URL` e `SUPABASE_DB_USER` |
 | `jwt.secret` / `jwt.expiration-ms` | Chave do token de login e validade (padrão 24 h). **Troque a chave em uso real.** |
-| `app.uploads.dir` | Pasta das fotos de itens (padrão `uploads`) |
-| `app.mensagens.dir` | Pasta privada das imagens das conversas |
-| `app.projetos.dir` | Pasta privada dos arquivos dos projetos (PDF, CAD...) |
+| `app.supabase.url` / `app.supabase.service-key` | Endereço do projeto e chave secreta para o Supabase Storage (a chave vem de `SUPABASE_SERVICE_KEY`, no `.env`) |
+| `app.armazenamento` | `supabase` (padrão) ou `local` (perfil `h2`: arquivos em `backend/armazenamento-local`) |
 | `spring.servlet.multipart.max-file-size` | Tamanho máximo de cada arquivo enviado (20 MB; imagens de itens e conversas seguem limitadas a 5 MB) |
 
 **Frontend** – o endereço da API (`http://localhost:8080`) aparece em `src/api/client.js`, `src/utils/format.js` e
@@ -363,13 +366,15 @@ estão em [CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
 | `password authentication failed` | Senha errada no `.env`. Confira no Supabase (*Project Settings › Database*) ou redefina a senha lá. Se a senha tiver `\`, escreva `\\`. |
 | `Connection refused`, `timeout` ou `UnknownHost` ao iniciar | Sem internet ou projeto do Supabase pausado (o plano gratuito pausa após dias sem uso: entre no painel e clique em *Restore*). |
 | Dados que eu cadastrei sumiram | Confira se o backend não foi iniciado com o perfil `h2` (banco em memória). |
-| Fotos dos itens não aparecem | Rode o backend **de dentro da pasta `backend`**, para que as pastas de imagens fiquem no lugar certo. |
+| `Could not resolve placeholder 'SUPABASE_SERVICE_KEY'` | Falta a linha `SUPABASE_SERVICE_KEY=...` no `backend/.env` (veja o `.env.example`). |
+| `O Supabase recusou a chave SUPABASE_SERVICE_KEY` | A chave no `.env` está errada ou é a *publishable*. Use a **secret** (`sb_secret_...`) de *Project Settings › API Keys*. |
+| Fotos dos itens não aparecem | Confira se o backend iniciou sem erros (ele prepara o Storage ao iniciar) e se há internet. |
 | Sessão perdida ao abrir outra aba | O login é por aba (de propósito). Entre de novo na aba nova. |
 
 ## 13. Próximos passos e créditos
 
 **Próximos passos sugeridos**
-- Guardar as fotos e os anexos no *Supabase Storage* (hoje ficam nas pastas `uploads` do computador que roda o backend).
+- Publicar o backend (Java) e o frontend num serviço de hospedagem, para o sistema funcionar fora do `localhost`.
 - Relatórios de consumo por período (a estrutura de movimentações já suporta consultas por data).
 - Integração futura com ERP/compras e renomear "Pastilhas" para algo mais geral (ex.: *Materiais*).
 

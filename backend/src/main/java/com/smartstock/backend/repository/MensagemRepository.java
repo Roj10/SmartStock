@@ -34,6 +34,8 @@ public interface MensagemRepository extends JpaRepository<Mensagem, Long> {
     @Query("update Mensagem m set m.lida = true where m.destinatario.id = :destinatario and m.remetente.id = :remetente and m.lida = false")
     int marcarComoLidas(@Param("destinatario") Long destinatario, @Param("remetente") Long remetente);
 
+    List<Mensagem> findByImagemArquivoIsNotNull();
+
     @Query("select m from Mensagem m where m.imagemArquivo is not null and (m.remetente.id = :usuario or m.destinatario.id = :usuario)")
     List<Mensagem> comImagemDoUsuario(@Param("usuario") Long usuario);
 
