@@ -15,6 +15,13 @@ import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.MovimentacaoRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
 
+/**
+ * <b>Em palavras simples:</b> Monta o painel inicial: total de itens e de fornecedores, itens com estoque baixo e as 10 últimas
+ * movimentações. Só inclui as informações das abas que a conta logada pode ver.
+ *
+ * Os "services" são onde ficam as regras do negócio: os controllers só recebem e respondem,
+ * os services decidem o que pode e o que não pode, e os repositories leem e gravam no banco.
+ */
 @Service
 public class DashboardService {
 

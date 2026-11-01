@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.smartstock.backend.model.Mensagem;
 
+/**
+ * <b>Em palavras simples:</b> Acesso à tabela de mensagens: conversas entre duas contas, não lidas e últimas mensagens de cada contato.
+ */
 public interface MensagemRepository extends JpaRepository<Mensagem, Long> {
 
     /** Mensagens trocadas entre duas contas, da mais recente para a mais antiga. */

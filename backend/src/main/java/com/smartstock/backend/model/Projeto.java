@@ -19,6 +19,10 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
+/**
+ * <b>Em palavras simples:</b> Tabela projetos: cada ordem de produção/pedido. Guarda a etapa atual (status), o cliente, as datas
+ * (pedido, meta, início e fim da produção, entrega), o checklist, os materiais e os arquivos anexados.
+ */
 @Entity
 @Table(name = "projetos")
 public class Projeto {

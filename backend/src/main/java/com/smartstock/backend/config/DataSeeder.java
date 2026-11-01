@@ -38,6 +38,14 @@ import com.smartstock.backend.repository.ModeloProjetoRepository;
 import com.smartstock.backend.repository.UsuarioRepository;
 import com.smartstock.backend.repository.VendaRepository;
 
+/**
+ * <b>Em palavras simples:</b> Dados de exemplo: preenche o sistema na primeira vez que ele roda com o banco vazio.
+ *
+ * Cria as contas de exemplo (admin, produção, financeiro...), fornecedores, itens de estoque com fotos,
+ * movimentações, projetos e vendas, para que dê para usar e apresentar o sistema logo de cara.
+ * Se o banco já tiver dados, não faz nada (nunca apaga nem duplica o que existe).
+ * As contas criadas aqui começam com "trocar senha" ligado: no primeiro login a pessoa escolhe a dela.
+ */
 @Component
 @org.springframework.core.annotation.Order(1)
 public class DataSeeder implements CommandLineRunner {

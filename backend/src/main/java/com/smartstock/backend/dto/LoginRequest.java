@@ -2,6 +2,9 @@ package com.smartstock.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * <b>Em palavras simples:</b> Formato da primeira etapa do login: nome de usuário e senha.
+ */
 public class LoginRequest {
 
     @NotBlank

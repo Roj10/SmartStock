@@ -16,6 +16,13 @@ import com.smartstock.backend.model.Role;
 import com.smartstock.backend.model.Usuario;
 import com.smartstock.backend.repository.UsuarioRepository;
 
+/**
+ * <b>Em palavras simples:</b> Regras das contas: criar, editar, excluir, escolher abas e redefinir o 2FA.
+ *
+ * Proteções: ninguém exclui a própria conta nem o último administrador; quem não é administrador só
+ * pode dar abas que ele mesmo tem; ao trocar a senha de alguém, as sessões dessa pessoa são encerradas e
+ * ela precisa escolher uma senha nova no próximo login.
+ */
 @Service
 public class UsuarioService {
 

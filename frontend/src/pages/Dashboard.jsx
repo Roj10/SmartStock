@@ -1,3 +1,6 @@
+/*
+ * Em palavras simples: Tela inicial (Painel): números gerais, itens com estoque baixo e as últimas movimentações.
+ */
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import StatCard from '../components/StatCard';

@@ -9,6 +9,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+/**
+ * <b>Em palavras simples:</b> Formato dos dados para criar ou editar uma conta: nome, usuário, senha, perfil e abas permitidas.
+ */
 public class UsuarioRequest {
 
     @NotBlank

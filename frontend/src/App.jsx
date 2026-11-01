@@ -1,3 +1,10 @@
+/*
+ * Em palavras simples: Mapa de telas do sistema: qual endereço abre qual página.
+ * /login é aberta a todos; as demais ficam dentro do Layout (menu lateral) e do ProtectedRoute, que
+ * manda para o login quem não entrou e bloqueia quem não tem a permissão da aba.
+ * Importante: esconder a tela é só conforto visual; quem realmente protege os dados é o backend,
+ * que confere a permissão em cada chamada à API.
+ */
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';

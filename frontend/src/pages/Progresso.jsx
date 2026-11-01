@@ -1,3 +1,9 @@
+/*
+ * Em palavras simples: Tela Progresso (ordem de produção): um quadro com colunas Aguardando → Em produção → Em estoque →
+ * Pronto para entrega. Cada cartão é um projeto, com checklist, materiais e arquivos. Daqui se cria
+ * projeto (do zero, de um modelo ou repetindo outro), muda de etapa e envia o pedido ao cliente.
+ * Editar e excluir pedem a senha do administrador.
+ */
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';

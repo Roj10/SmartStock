@@ -4,6 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
+/**
+ * <b>Em palavras simples:</b> Formato dos dados para cadastrar ou editar um item de estoque (código, descrição, fabricante, mínimo e quantidade).
+ */
 public class PastilhaRequest {
 
     @NotBlank

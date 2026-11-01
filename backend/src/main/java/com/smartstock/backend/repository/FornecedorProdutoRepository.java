@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.smartstock.backend.model.FornecedorProduto;
 
+/**
+ * <b>Em palavras simples:</b> Acesso à tabela de preços por fornecedor (fornecedor_produtos).
+ */
 public interface FornecedorProdutoRepository extends JpaRepository<FornecedorProduto, Long> {
 
     List<FornecedorProduto> findByFornecedorIdOrderByPastilhaCodigoAsc(Long fornecedorId);

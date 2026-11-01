@@ -5,6 +5,9 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+/**
+ * <b>Em palavras simples:</b> Formato da lista completa de itens e preços de um fornecedor (substitui a lista anterior).
+ */
 public class FornecedorProdutosRequest {
 
     @Valid

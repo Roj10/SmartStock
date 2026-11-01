@@ -1,3 +1,11 @@
+/*
+ * Em palavras simples: Tela de login, em etapas, conversando com o backend:
+ * 1) usuário e senha;
+ * 2) na primeira vez: QR code para cadastrar o app autenticador, primeiro código e os códigos de recuperação;
+ *    nas outras vezes: só o código de 6 dígitos do app (ou um código de recuperação);
+ * 3) troca de senha, quando a conta usa senha de exemplo ou definida pelo administrador.
+ * Cada etapa usa um "desafio" (passe temporário de 5 minutos); o acesso só é liberado no fim.
+ */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';

@@ -1,3 +1,9 @@
+/*
+ * Em palavras simples: "Memória" do login no navegador, compartilhada por todas as telas.
+ * Guarda quem está logado, o perfil e as abas permitidas, e oferece: concluirLogin (ao fim das etapas
+ * do login), logout (sair) e hasPermissao (para mostrar ou esconder abas e botões).
+ * Os dados ficam no sessionStorage: valem só para esta aba do navegador e somem ao fechá-la.
+ */
 import { createContext, useContext, useState, useCallback } from 'react';
 import api from '../api/client';
 

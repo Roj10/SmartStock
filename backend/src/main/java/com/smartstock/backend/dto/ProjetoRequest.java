@@ -6,6 +6,10 @@ import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * <b>Em palavras simples:</b> Formato dos dados para criar ou editar um projeto: nome, descrição, checklist, materiais,
+ * arquivos a copiar de outro projeto e, na edição, a senha do administrador.
+ */
 public class ProjetoRequest {
 
     @NotBlank

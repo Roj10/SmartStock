@@ -1,0 +1,40 @@
+# Serviço do backend do SmartStock (systemd, no Ubuntu do EC2).
+#
+# Em palavras simples: isto faz o Linux tratar o backend como um "serviço" — ele liga sozinho quando o
+# servidor liga e, se travar ou cair, é reiniciado em 5 segundos.
+#
+# Comandos úteis:
+#   sudo systemctl status smartstock      -> está rodando?
+#   sudo systemctl restart smartstock     -> reiniciar (depois de trocar o .jar)
+#   sudo journalctl -u smartstock -f      -> ver o log ao vivo (Ctrl+C para sair)
+
+[Unit]
+Description=SmartStock - backend (Spring Boot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# usuário próprio, sem senha e sem shell: se alguém invadir o backend, não manda no servidor
+User=smartstock
+Group=smartstock
+# pasta onde ficam o backend.jar, o .env (senhas) e o supabase-ca.crt
+WorkingDirectory=/opt/smartstock
+# o backend só escuta dentro do servidor; quem fala com a internet é o Nginx
+Environment=SERVER_ADDRESS=127.0.0.1
+# confia nos cabeçalhos X-Forwarded-* do Nginx (para saber o IP real de quem acessa e se é https)
+Environment=SERVER_FORWARD_HEADERS_STRATEGY=native
+# memória: cabe numa instância t3.micro / t2.micro (1 GB)
+ExecStart=/usr/bin/java -Xms128m -Xmx400m -XX:+UseSerialGC -jar /opt/smartstock/backend.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+# travas extras: o serviço não enxerga /home, não altera o sistema e só escreve na própria pasta
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/smartstock
+
+[Install]
+WantedBy=multi-user.target

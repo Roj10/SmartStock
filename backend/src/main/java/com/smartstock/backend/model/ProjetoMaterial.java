@@ -12,6 +12,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+/**
+ * <b>Em palavras simples:</b> Tabela projeto_materiais: quais itens do estoque um projeto usa e quantos. São baixados do estoque ao enviar o pedido.
+ */
 @Entity
 @Table(name = "projeto_materiais")
 public class ProjetoMaterial {

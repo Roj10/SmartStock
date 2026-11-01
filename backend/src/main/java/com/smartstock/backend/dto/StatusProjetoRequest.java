@@ -4,6 +4,9 @@ import com.smartstock.backend.model.StatusProjeto;
 
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * <b>Em palavras simples:</b> Formato do pedido para mudar a etapa de um projeto (ex.: de AGUARDANDO para EM_PRODUCAO).
+ */
 public class StatusProjetoRequest {
 
     @NotNull

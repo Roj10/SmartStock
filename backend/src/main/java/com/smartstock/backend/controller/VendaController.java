@@ -2,6 +2,7 @@ package com.smartstock.backend.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartstock.backend.dto.FinanceiroDtos.VendaResposta;
@@ -18,6 +20,10 @@ import com.smartstock.backend.service.VendaService;
 
 import jakarta.validation.Valid;
 
+/**
+ * <b>Em palavras simples:</b> Rotas de Vendas e planos (/api/vendas/...). Um "plano" é um orçamento feito para um cliente;
+ * quando o cliente aceita, o plano é "fechado" e vira venda. Só para contas com a aba Financeiro.
+ */
 @RestController
 @RequestMapping("/api/vendas")
 @PreAuthorize("hasAuthority('PERM_FINANCEIRO')")
@@ -34,7 +40,13 @@ public class VendaController {
         return vendaService.listar();
     }
 
+    @GetMapping("/{id}")
+    public VendaResposta buscar(@PathVariable Long id) {
+        return vendaService.obter(id);
+    }
+
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public VendaResposta criar(@Valid @RequestBody VendaRequest request) {
         return vendaService.criar(request);
     }
@@ -50,6 +62,7 @@ public class VendaController {
     }
 
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void excluir(@PathVariable Long id) {
         vendaService.excluir(id);
     }

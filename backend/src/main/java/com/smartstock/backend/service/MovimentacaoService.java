@@ -26,6 +26,13 @@ import com.smartstock.backend.repository.MovimentacaoRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
 import com.smartstock.backend.repository.UsuarioRepository;
 
+/**
+ * <b>Em palavras simples:</b> Regras de entradas e saídas de estoque.
+ *
+ * Entrada: soma a quantidade ao item. Saída: confere se há quantidade suficiente e subtrai. Toda
+ * movimentação fica registrada com data, quem fez e (na entrada) o fornecedor. Na entrada em lote, se
+ * uma linha der erro, nenhuma é gravada (@Transactional = "tudo ou nada").
+ */
 @Service
 public class MovimentacaoService {
 
@@ -50,6 +57,11 @@ public class MovimentacaoService {
         return movimentacaoRepository.findByPastilhaIdOrderByDataHoraDesc(pastilhaId);
     }
 
+    /**
+     * Entrada de estoque (ex.: chegou uma compra): soma a quantidade ao item e registra quem fez.
+     * {@code @Transactional} = "tudo ou nada": a nova quantidade e o registro da movimentação são gravados
+     * juntos; se um falhar, nenhum fica gravado.
+     */
     @Transactional
     public Movimentacao registrarEntrada(MovimentacaoRequest request) {
         Pastilha pastilha = buscarPastilha(request.getPastilhaId());
@@ -80,11 +92,13 @@ public class MovimentacaoService {
      */
     @Transactional
     public List<Movimentacao> registrarSaidasDoProjeto(Projeto projeto, String cliente) {
+        // 1) soma o total necessário de cada item (o mesmo item pode aparecer em mais de uma linha)
         Map<Long, Integer> necessario = new LinkedHashMap<>();
         for (ProjetoMaterial material : projeto.getMateriais()) {
             necessario.merge(material.getPastilha().getId(), material.getQuantidade(), Integer::sum);
         }
 
+        // 2) confere TUDO antes de baixar qualquer coisa, e junta todas as faltas numa mensagem só
         List<String> faltas = new ArrayList<>();
         for (Map.Entry<Long, Integer> item : necessario.entrySet()) {
             Pastilha pastilha = buscarPastilha(item.getKey());
@@ -98,6 +112,7 @@ public class MovimentacaoService {
                     + ". Registre uma entrada de estoque e tente novamente.");
         }
 
+        // 3) com tudo disponível, registra uma saída por item, identificando o projeto e o cliente
         String observacao = String.format("Saída automática do projeto OP-%03d - %s (cliente: %s)",
                 projeto.getId(), projeto.getNome(), cliente);
         List<Movimentacao> registradas = new ArrayList<>();
@@ -111,6 +126,7 @@ public class MovimentacaoService {
         return registradas;
     }
 
+    /** Saída de estoque (uso na produção, manutenção...): recusada se pedir mais do que existe. */
     @Transactional
     public Movimentacao registrarSaida(MovimentacaoRequest request) {
         Pastilha pastilha = buscarPastilha(request.getPastilhaId());
@@ -150,6 +166,7 @@ public class MovimentacaoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Pastilha não encontrada: " + id));
     }
 
+    /** Descobre quem está logado (pelo token do pedido) para gravar como responsável pela movimentação. */
     private java.util.Optional<Usuario> usuarioAutenticado() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {

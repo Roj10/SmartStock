@@ -1,3 +1,7 @@
+/*
+ * Em palavras simples: Moldura de todas as telas depois do login: menu lateral com as abas que a conta pode ver, aviso
+ * de mensagens não lidas, nome da conta e botão "Sair". A página escolhida aparece no espaço central.
+ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/client';

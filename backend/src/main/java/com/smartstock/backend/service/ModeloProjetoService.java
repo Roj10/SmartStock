@@ -8,11 +8,16 @@ import org.springframework.transaction.annotation.Transactional;
 import com.smartstock.backend.dto.ModeloProjetoDtos.MaterialModelo;
 import com.smartstock.backend.dto.ModeloProjetoDtos.ModeloRequest;
 import com.smartstock.backend.dto.ModeloProjetoDtos.ModeloResposta;
+import com.smartstock.backend.exception.BusinessException;
 import com.smartstock.backend.exception.ResourceNotFoundException;
 import com.smartstock.backend.model.ModeloProjeto;
 import com.smartstock.backend.repository.ModeloProjetoRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
 
+/**
+ * <b>Em palavras simples:</b> Regras dos Modelos de projeto: salvar (pelo nome, sem duplicar), editar, excluir e aplicar um modelo
+ * na criação de um projeto (copiando checklist e materiais).
+ */
 @Service
 @Transactional
 public class ModeloProjetoService {
@@ -37,7 +42,33 @@ public class ModeloProjetoService {
     public ModeloResposta salvar(ModeloRequest request) {
         String nome = request.nome().trim();
         ModeloProjeto modelo = modeloRepository.findFirstByNomeIgnoreCase(nome).orElseGet(ModeloProjeto::new);
+        return resposta(modeloRepository.save(aplicar(modelo, request)));
+    }
 
+    /** Um modelo pelo número. */
+    @Transactional(readOnly = true)
+    public ModeloResposta obter(Long id) {
+        return resposta(buscar(id));
+    }
+
+    /** Edita um modelo existente (inclusive o nome, desde que não seja o nome de outro modelo). */
+    public ModeloResposta atualizar(Long id, ModeloRequest request) {
+        ModeloProjeto modelo = buscar(id);
+        String nome = request.nome().trim();
+        modeloRepository.findFirstByNomeIgnoreCase(nome).filter(outro -> !outro.getId().equals(id)).ifPresent(outro -> {
+            throw new BusinessException("Já existe outro modelo chamado \"" + nome + "\".");
+        });
+        return resposta(modeloRepository.save(aplicar(modelo, request)));
+    }
+
+    private ModeloProjeto buscar(Long id) {
+        return modeloRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Modelo não encontrado: " + id));
+    }
+
+    /** Copia nome, descrição, etapas e materiais do pedido para o modelo. */
+    private ModeloProjeto aplicar(ModeloProjeto modelo, ModeloRequest request) {
+        String nome = request.nome().trim();
         modelo.setNome(nome);
         modelo.setDescricao(request.descricao() == null || request.descricao().isBlank() ? null : request.descricao().trim());
 
@@ -55,7 +86,7 @@ public class ModeloProjetoService {
                 modelo.getMateriais().add(new ModeloProjeto.Material(m.pastilhaId(), m.quantidade()));
             }
         }
-        return resposta(modeloRepository.save(modelo));
+        return modelo;
     }
 
     public void excluir(Long id) {

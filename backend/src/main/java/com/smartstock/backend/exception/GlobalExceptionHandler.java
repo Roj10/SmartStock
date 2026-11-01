@@ -11,6 +11,14 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * <b>Em palavras simples:</b> Tradutor de erros: transforma qualquer problema em uma resposta clara e sempre no mesmo formato
+ * {status, message, timestamp}.
+ *
+ * Exemplos: campo obrigatório vazio → 400; sem permissão → 403; não encontrado → 404; registro em uso
+ * por outros cadastros → 409; regra de negócio → 422; muitas tentativas → 429. Erros inesperados
+ * viram 500 com uma mensagem genérica, sem mostrar detalhes internos (que poderiam ajudar um invasor).
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

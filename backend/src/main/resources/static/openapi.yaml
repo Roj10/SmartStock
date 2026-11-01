@@ -1,0 +1,3620 @@
+# Documentação da API do SmartStock (OpenAPI 3). Aberta no navegador em /swagger-ui.html.
+# Os exemplos de resposta foram gerados chamando o sistema de verdade com os dados de exemplo.
+openapi: 3.0.3
+info:
+  title: SmartStock API
+  version: '1.0'
+  description: 'API do SmartStock: estoque, produção, entregas, financeiro e mensagens de uma metalúrgica.
+
+
+    **Como usar aqui:** 1) `POST /api/auth/login` com usuário e senha; 2) siga a etapa indicada em `etapa` (2FA com o código
+    do app; troca de senha, se pedida); 3) copie o `token` da resposta final, clique em **Authorize** e cole. As outras rotas
+    passam a funcionar com as permissões da sua conta.
+
+
+    Todas as respostas de erro têm o formato `{status, message, timestamp}`. Os exemplos desta página são respostas reais
+    do sistema com os dados de exemplo.'
+servers:
+- url: /
+  description: Este servidor
+tags:
+- name: Autenticação
+  description: 'Login em etapas: senha → 2FA (app autenticador) → troca de senha, quando exigida. Só a última etapa entrega
+    o token de acesso.'
+- name: Painel
+  description: Resumo da tela inicial (mostra só o que a conta pode ver).
+- name: Itens de estoque
+  description: 'Cadastro dos itens (no código chamados de "pastilhas"): código, descrição, fabricante, estoque mínimo/atual
+    e foto.'
+- name: Movimentações
+  description: Entradas e saídas de estoque. Cada movimentação altera a quantidade do item e registra quem fez.
+- name: Fornecedores
+  description: Fabricantes e fornecedores, e o preço de cada item por fornecedor.
+- name: Projetos
+  description: Ordem de produção (aba Progresso) e entregas (aba Calendário), com checklist, materiais e arquivos anexados.
+- name: Modelos de projeto
+  description: Modelos reaproveitáveis de checklist e materiais para criar projetos novos.
+- name: Financeiro
+  description: 'Valores: preço por fornecedor, valor parado em estoque, custo e margem dos projetos.'
+- name: Vendas e planos
+  description: Planos (orçamentos) feitos para clientes; ao fechar, viram venda.
+- name: Mensagens
+  description: Conversa entre as contas (setores), com texto e imagens privadas.
+- name: Usuários
+  description: Contas, perfis e permissões por aba; redefinição do 2FA.
+- name: Segurança
+  description: Registro de eventos de segurança (logins, falhas, bloqueios, 2FA, senhas).
+security:
+- bearerAuth: []
+paths:
+  /api/auth/login:
+    post:
+      tags:
+      - Autenticação
+      summary: 'Etapa 1: usuário e senha'
+      description: 'Confere a senha e devolve a próxima etapa (CONFIGURAR_2FA na primeira vez, senão CODIGO_2FA) com um `desafio`
+        (token curto, 5 min) para usar nela. Nunca devolve o token de acesso aqui.
+
+
+        **Quem pode:** Pública.'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              username: admin
+              senha: SuaSenha2026
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                etapa: CONFIGURAR_2FA
+                desafio: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiI...(token JWT)
+                token: null
+                username: null
+                nome: Administrador
+                role: null
+                permissoes: null
+                codigosRecuperacao: null
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '429':
+          $ref: '#/components/responses/Erro429'
+  /api/auth/2fa/configurar:
+    post:
+      tags:
+      - Autenticação
+      summary: 'Etapa 2 (1ª vez): gerar o QR code do app autenticador'
+      description: 'Gera o segredo do 2FA e devolve o QR code (imagem PNG) e a chave para digitar no app, se a câmera não
+        funcionar.
+
+
+        **Quem pode:** Pública (exige o `desafio` da etapa 1).'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                qrCode: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAVYAAAFWAQAAAA...(imagem PNG do QR code)
+                chave: 3DER TI2F ORYU R6DY ST7W WEVV JPFJ PLS7
+                conta: admin
+        '401':
+          $ref: '#/components/responses/Erro401'
+  /api/auth/2fa/ativar:
+    post:
+      tags:
+      - Autenticação
+      summary: 'Etapa 2 (1ª vez): confirmar o primeiro código e ativar o 2FA'
+      description: 'Confere o código de 6 dígitos do app. Devolve os 8 códigos de recuperação (mostrados uma única vez) e
+        a próxima etapa.
+
+
+        **Quem pode:** Pública (exige o `desafio`).'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+              codigo: '123456'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                etapa: TROCAR_SENHA
+                desafio: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiI...(token JWT)
+                token: null
+                username: null
+                nome: Administrador
+                role: null
+                permissoes: null
+                codigosRecuperacao:
+                - xtpk-ak74
+                - whhk-2ux8
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '422':
+          $ref: '#/components/responses/Erro422'
+        '429':
+          $ref: '#/components/responses/Erro429'
+  /api/auth/2fa/verificar:
+    post:
+      tags:
+      - Autenticação
+      summary: 'Etapa 2: código do app (ou código de recuperação)'
+      description: 'Aceita o código de 6 dígitos do app (cada um vale uma vez) ou um código de recuperação (formato xxxx-xxxx,
+        uso único). Se a conta não precisar trocar a senha, já devolve o token de acesso.
+
+
+        **Quem pode:** Pública (exige o `desafio`).'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+              codigo: '123456'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                etapa: CONCLUIDO
+                desafio: null
+                token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiI...(token JWT)
+                username: admin
+                nome: Administrador
+                role: ADMIN
+                permissoes:
+                - PASTILHAS
+                - FORNECEDORES
+                codigosRecuperacao: null
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '422':
+          $ref: '#/components/responses/Erro422'
+        '429':
+          $ref: '#/components/responses/Erro429'
+  /api/auth/trocar-senha:
+    post:
+      tags:
+      - Autenticação
+      summary: 'Etapa 3: troca obrigatória de senha'
+      description: 'Exigida quando a conta usa senha de exemplo ou definida pelo administrador. Senha nova: 8+ caracteres,
+        com letras e números, sem conter o nome de usuário. Devolve o token de acesso.
+
+
+        **Quem pode:** Pública (exige o `desafio`).'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+              novaSenha: Estoque2026forte
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                etapa: CONCLUIDO
+                desafio: null
+                token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiI...(token JWT)
+                username: admin
+                nome: Administrador
+                role: ADMIN
+                permissoes:
+                - PASTILHAS
+                - FORNECEDORES
+                codigosRecuperacao: null
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/auth/sair:
+    post:
+      tags:
+      - Autenticação
+      summary: Sair (encerra todas as sessões da conta)
+      description: 'O token usado (e qualquer outro dessa conta) deixa de valer.
+
+
+        **Quem pode:** Conta logada.'
+      responses:
+        '200':
+          description: OK.
+        '401':
+          $ref: '#/components/responses/Erro401'
+  /api/dashboard:
+    get:
+      tags:
+      - Painel
+      summary: Resumo da tela inicial
+      description: 'Totais, itens com estoque crítico e últimas movimentações, conforme as permissões da conta.
+
+
+        **Quem pode:** Conta logada.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                podeVerPastilhas: true
+                podeVerFornecedores: true
+                podeVerMovimentacoes: true
+                totalPastilhas: 8
+                totalFornecedores: 3
+                itensAbaixoDoMinimo: 2
+                alertas:
+                - id: 3
+                  codigo: TIN-ESM-04
+                  descricao: Tinta esmalte sintético exterior (lata 0,4 kg)
+                  fabricante:
+                    id: 2
+                    nome: Tintas Serrana
+                    tipo: FABRICANTE
+                    contato: Atendimento ao cliente
+                    telefone: (47) 3333-2222
+                    email: atendimento@serrana.example.com
+                  estoqueMinimo: 12
+                  quantidadeAtual: 8
+                  imagemUrl: /arquivos/pastilhas/seed-tinta-esmalte.jpg
+                  abaixoDoMinimo: true
+                - id: 7
+                  codigo: DOB-PORT-REF
+                  descricao: Dobradiça de portão reforçada com pino regulável
+                  fabricante:
+                    id: 3
+                    nome: Ferragens Fraiburgo
+                    tipo: FORNECEDOR
+                    contato: Vendas
+                    telefone: (49) 3222-4444
+                    email: vendas@ferragensfraiburgo.example.com
+                  estoqueMinimo: 10
+                  quantidadeAtual: 10
+                  imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                  abaixoDoMinimo: true
+                ultimasMovimentacoes: []
+        '401':
+          $ref: '#/components/responses/Erro401'
+  /api/pastilhas:
+    get:
+      tags:
+      - Itens de estoque
+      summary: Listar itens
+      description: '**Quem pode:** Estoque, Movimentações, Progresso ou Fornecedores.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 1
+                codigo: BAR-FE-01
+                descricao: Barra de ferro quadrada 1" (barra de 6 m)
+                fabricante:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                estoqueMinimo: 20
+                quantidadeAtual: 45
+                imagemUrl: /arquivos/pastilhas/seed-barra-ferro-chata.jpg
+                abaixoDoMinimo: false
+              - id: 2
+                codigo: RDA-PORT-150
+                descricao: Roda de portão em ferro fundido 150 mm
+                fabricante:
+                  id: 3
+                  nome: Ferragens Fraiburgo
+                  tipo: FORNECEDOR
+                  contato: Vendas
+                  telefone: (49) 3222-4444
+                  email: vendas@ferragensfraiburgo.example.com
+                estoqueMinimo: 10
+                quantidadeAtual: 14
+                imagemUrl: /arquivos/pastilhas/seed-roda-portao.jpg
+                abaixoDoMinimo: false
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags:
+      - Itens de estoque
+      summary: Cadastrar item
+      description: 'A quantidade informada é o estoque inicial; depois ela só muda por movimentações.
+
+
+        **Quem pode:** Estoque.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              codigo: CHP-AC-03
+              descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+              fabricanteId: 1
+              estoqueMinimo: 5
+              quantidadeAtual: 12
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 9
+                codigo: CHP-AC-03
+                descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                fabricante:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                estoqueMinimo: 5
+                quantidadeAtual: 12
+                imagemUrl: null
+                abaixoDoMinimo: false
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/pastilhas/alertas:
+    get:
+      tags:
+      - Itens de estoque
+      summary: Itens com estoque crítico
+      description: 'Itens com quantidade atual menor ou igual ao estoque mínimo.
+
+
+        **Quem pode:** Estoque, Movimentações, Progresso ou Fornecedores.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 3
+                codigo: TIN-ESM-04
+                descricao: Tinta esmalte sintético exterior (lata 0,4 kg)
+                fabricante:
+                  id: 2
+                  nome: Tintas Serrana
+                  tipo: FABRICANTE
+                  contato: Atendimento ao cliente
+                  telefone: (47) 3333-2222
+                  email: atendimento@serrana.example.com
+                estoqueMinimo: 12
+                quantidadeAtual: 8
+                imagemUrl: /arquivos/pastilhas/seed-tinta-esmalte.jpg
+                abaixoDoMinimo: true
+              - id: 7
+                codigo: DOB-PORT-REF
+                descricao: Dobradiça de portão reforçada com pino regulável
+                fabricante:
+                  id: 3
+                  nome: Ferragens Fraiburgo
+                  tipo: FORNECEDOR
+                  contato: Vendas
+                  telefone: (49) 3222-4444
+                  email: vendas@ferragensfraiburgo.example.com
+                estoqueMinimo: 10
+                quantidadeAtual: 10
+                imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                abaixoDoMinimo: true
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/pastilhas/{id}:
+    get:
+      tags:
+      - Itens de estoque
+      summary: Buscar um item
+      description: '**Quem pode:** Estoque, Movimentações, Progresso ou Fornecedores.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 1
+                codigo: BAR-FE-01
+                descricao: Barra de ferro quadrada 1" (barra de 6 m)
+                fabricante:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                estoqueMinimo: 20
+                quantidadeAtual: 45
+                imagemUrl: /arquivos/pastilhas/seed-barra-ferro-chata.jpg
+                abaixoDoMinimo: false
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    put:
+      tags:
+      - Itens de estoque
+      summary: Editar item
+      description: '**Quem pode:** Estoque.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              codigo: CHP-AC-03
+              descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+              fabricanteId: 1
+              estoqueMinimo: 6
+              quantidadeAtual: 12
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 9
+                codigo: CHP-AC-03
+                descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                fabricante:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                estoqueMinimo: 6
+                quantidadeAtual: 12
+                imagemUrl: null
+                abaixoDoMinimo: false
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+    delete:
+      tags:
+      - Itens de estoque
+      summary: Excluir item
+      description: 'Recusado (409) se o item tiver movimentações ou estiver em projetos.
+
+
+        **Quem pode:** Estoque.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '204':
+          description: Feito (sem conteúdo na resposta).
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+  /api/pastilhas/{id}/imagem:
+    post:
+      tags:
+      - Itens de estoque
+      summary: Enviar/trocar a foto do item
+      description: 'multipart/form-data com o campo `arquivo` (PNG, JPEG, WEBP ou GIF, até 5 MB; o tipo é conferido pelo conteúdo).
+        A foto vai para o bucket público "pastilhas" do Supabase Storage.
+
+
+        **Quem pode:** Estoque.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                arquivo:
+                  type: string
+                  format: binary
+                  description: Imagem (PNG, JPEG, WEBP ou GIF)
+              required:
+              - arquivo
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 9
+                codigo: CHP-AC-03
+                descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                fabricante:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                estoqueMinimo: 6
+                quantidadeAtual: 12
+                imagemUrl: /arquivos/pastilhas/2d5afa00-3e71-460d-94bb-f4e9e7a0f7da.png
+                abaixoDoMinimo: false
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+    delete:
+      tags:
+      - Itens de estoque
+      summary: Remover a foto do item
+      description: '**Quem pode:** Estoque.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 9
+                codigo: CHP-AC-03
+                descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                fabricante:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                estoqueMinimo: 6
+                quantidadeAtual: 12
+                imagemUrl: null
+                abaixoDoMinimo: false
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/movimentacoes:
+    get:
+      tags:
+      - Movimentações
+      summary: Listar movimentações
+      description: 'Mais recentes primeiro. Filtro opcional por item.
+
+
+        **Quem pode:** Movimentações.'
+      parameters:
+      - name: pastilhaId
+        in: query
+        required: false
+        schema:
+          type: integer
+        description: Só as movimentações deste item
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example: []
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/movimentacoes/entrada:
+    post:
+      tags:
+      - Movimentações
+      summary: Registrar entrada
+      description: 'Soma a quantidade ao estoque do item.
+
+
+        **Quem pode:** Movimentações.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              pastilhaId: 9
+              quantidade: 4
+              fornecedorId: 4
+              observacao: NF 1234
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 1
+                pastilha:
+                  id: 9
+                  codigo: CHP-AC-03
+                  descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                  fabricante:
+                    id: 1
+                    nome: Siderúrgica Planalto
+                    tipo: FABRICANTE
+                    contato: Vendas de aço
+                    telefone: (47) 3333-1111
+                    email: vendas@planalto.example.com
+                  estoqueMinimo: 6
+                  quantidadeAtual: 16
+                  imagemUrl: null
+                  abaixoDoMinimo: false
+                tipo: ENTRADA
+                quantidade: 4
+                fornecedor:
+                  id: 4
+                  nome: Aço Sul Distribuidora Ltda
+                  tipo: FORNECEDOR
+                  contato: Comercial
+                  telefone: (49) 3246-1000
+                  email: vendas@acosul.example.com
+                usuario:
+                  id: 1
+                  nome: Administrador
+                  username: admin
+                  role: ADMIN
+                  permissoes:
+                  - MOVIMENTACOES
+                  - PASTILHAS
+                  doisFatoresAtivo: true
+                  trocarSenha: false
+                dataHora: '2026-11-01T19:11:31.913699556'
+                observacao: NF 1234
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/movimentacoes/entrada/lote:
+    post:
+      tags:
+      - Movimentações
+      summary: Registrar várias entradas de uma vez (compra geral)
+      description: 'Se uma linha falhar, nenhuma é gravada.
+
+
+        **Quem pode:** Movimentações.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              observacao: Compra geral de novembro
+              itens:
+              - pastilhaId: 1
+                quantidade: 10
+                fornecedorId: 1
+              - pastilhaId: 6
+                quantidade: 20
+                fornecedorId: 3
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+              - id: 2
+                pastilha:
+                  id: 1
+                  codigo: BAR-FE-01
+                  descricao: Barra de ferro quadrada 1" (barra de 6 m)
+                  fabricante:
+                    id: 1
+                    nome: Siderúrgica Planalto
+                    tipo: FABRICANTE
+                    contato: Vendas de aço
+                    telefone: (47) 3333-1111
+                    email: vendas@planalto.example.com
+                  estoqueMinimo: 20
+                  quantidadeAtual: 55
+                  imagemUrl: /arquivos/pastilhas/seed-barra-ferro-chata.jpg
+                  abaixoDoMinimo: false
+                tipo: ENTRADA
+                quantidade: 10
+                fornecedor:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                usuario:
+                  id: 1
+                  nome: Administrador
+                  username: admin
+                  role: ADMIN
+                  permissoes:
+                  - MOVIMENTACOES
+                  - PASTILHAS
+                  doisFatoresAtivo: true
+                  trocarSenha: false
+                dataHora: '2026-11-01T19:11:31.956792835'
+                observacao: Compra geral de novembro
+              - id: 3
+                pastilha:
+                  id: 6
+                  codigo: DIS-COR-125
+                  descricao: Disco de corte para aço 125 mm (1 mm)
+                  fabricante:
+                    id: 3
+                    nome: Ferragens Fraiburgo
+                    tipo: FORNECEDOR
+                    contato: Vendas
+                    telefone: (49) 3222-4444
+                    email: vendas@ferragensfraiburgo.example.com
+                  estoqueMinimo: 30
+                  quantidadeAtual: 72
+                  imagemUrl: /arquivos/pastilhas/seed-disco-corte.jpg
+                  abaixoDoMinimo: false
+                tipo: ENTRADA
+                quantidade: 20
+                fornecedor:
+                  id: 3
+                  nome: Ferragens Fraiburgo
+                  tipo: FORNECEDOR
+                  contato: Vendas
+                  telefone: (49) 3222-4444
+                  email: vendas@ferragensfraiburgo.example.com
+                usuario:
+                  id: 1
+                  nome: Administrador
+                  username: admin
+                  role: ADMIN
+                  permissoes:
+                  - MOVIMENTACOES
+                  - PASTILHAS
+                  doisFatoresAtivo: true
+                  trocarSenha: false
+                dataHora: '2026-11-01T19:11:31.962787543'
+                observacao: Compra geral de novembro
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/movimentacoes/saida:
+    post:
+      tags:
+      - Movimentações
+      summary: Registrar saída
+      description: 'Recusada (422) se não houver estoque suficiente.
+
+
+        **Quem pode:** Movimentações.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              pastilhaId: 9
+              quantidade: 2
+              observacao: Uso na manutenção
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 4
+                pastilha:
+                  id: 9
+                  codigo: CHP-AC-03
+                  descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                  fabricante:
+                    id: 1
+                    nome: Siderúrgica Planalto
+                    tipo: FABRICANTE
+                    contato: Vendas de aço
+                    telefone: (47) 3333-1111
+                    email: vendas@planalto.example.com
+                  estoqueMinimo: 6
+                  quantidadeAtual: 14
+                  imagemUrl: null
+                  abaixoDoMinimo: false
+                tipo: SAIDA
+                quantidade: 2
+                fornecedor: null
+                usuario:
+                  id: 1
+                  nome: Administrador
+                  username: admin
+                  role: ADMIN
+                  permissoes:
+                  - MOVIMENTACOES
+                  - PASTILHAS
+                  doisFatoresAtivo: true
+                  trocarSenha: false
+                dataHora: '2026-11-01T19:11:31.975047095'
+                observacao: Uso na manutenção
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/fornecedores:
+    get:
+      tags:
+      - Fornecedores
+      summary: Listar fornecedores e fabricantes
+      description: '**Quem pode:** Fornecedores, Estoque ou Movimentações.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 1
+                nome: Siderúrgica Planalto
+                tipo: FABRICANTE
+                contato: Vendas de aço
+                telefone: (47) 3333-1111
+                email: vendas@planalto.example.com
+              - id: 2
+                nome: Tintas Serrana
+                tipo: FABRICANTE
+                contato: Atendimento ao cliente
+                telefone: (47) 3333-2222
+                email: atendimento@serrana.example.com
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags:
+      - Fornecedores
+      summary: Cadastrar fornecedor
+      description: '`tipo`: FABRICANTE, FORNECEDOR ou AMBOS.
+
+
+        **Quem pode:** Fornecedores.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              nome: Aço Sul Distribuidora
+              tipo: FORNECEDOR
+              contato: Comercial
+              telefone: (49) 3246-1000
+              email: vendas@acosul.example.com
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 4
+                nome: Aço Sul Distribuidora
+                tipo: FORNECEDOR
+                contato: Comercial
+                telefone: (49) 3246-1000
+                email: vendas@acosul.example.com
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/fornecedores/{id}:
+    get:
+      tags:
+      - Fornecedores
+      summary: Buscar um fornecedor
+      description: '**Quem pode:** Fornecedores, Estoque ou Movimentações.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 1
+                nome: Siderúrgica Planalto
+                tipo: FABRICANTE
+                contato: Vendas de aço
+                telefone: (47) 3333-1111
+                email: vendas@planalto.example.com
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    put:
+      tags:
+      - Fornecedores
+      summary: Editar fornecedor
+      description: '**Quem pode:** Fornecedores.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              nome: Aço Sul Distribuidora Ltda
+              tipo: FORNECEDOR
+              contato: Comercial
+              telefone: (49) 3246-1000
+              email: vendas@acosul.example.com
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 4
+                nome: Aço Sul Distribuidora Ltda
+                tipo: FORNECEDOR
+                contato: Comercial
+                telefone: (49) 3246-1000
+                email: vendas@acosul.example.com
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    delete:
+      tags:
+      - Fornecedores
+      summary: Excluir fornecedor
+      description: 'Recusado (409) se for fabricante de algum item ou aparecer em movimentações.
+
+
+        **Quem pode:** Fornecedores.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '204':
+          description: Feito (sem conteúdo na resposta).
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+  /api/fornecedores/produtos:
+    get:
+      tags:
+      - Fornecedores
+      summary: Preços de todos os fornecedores
+      description: '**Quem pode:** Fornecedores ou Financeiro.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 1
+                fornecedor:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                pastilha:
+                  id: 1
+                  codigo: BAR-FE-01
+                  descricao: Barra de ferro quadrada 1" (barra de 6 m)
+                  fabricante:
+                    id: 1
+                    nome: Siderúrgica Planalto
+                    tipo: FABRICANTE
+                    contato: Vendas de aço
+                    telefone: (47) 3333-1111
+                    email: vendas@planalto.example.com
+                  estoqueMinimo: 20
+                  quantidadeAtual: 45
+                  imagemUrl: /arquivos/pastilhas/seed-barra-ferro-chata.jpg
+                  abaixoDoMinimo: false
+                preco: 62.0
+              - id: 2
+                fornecedor:
+                  id: 1
+                  nome: Siderúrgica Planalto
+                  tipo: FABRICANTE
+                  contato: Vendas de aço
+                  telefone: (47) 3333-1111
+                  email: vendas@planalto.example.com
+                pastilha:
+                  id: 8
+                  codigo: TUB-ACO-48
+                  descricao: Tubo de aço inox 304 redondo 1.1/2" (barra de 6 m)
+                  fabricante:
+                    id: 1
+                    nome: Siderúrgica Planalto
+                    tipo: FABRICANTE
+                    contato: Vendas de aço
+                    telefone: (47) 3333-1111
+                    email: vendas@planalto.example.com
+                  estoqueMinimo: 15
+                  quantidadeAtual: 30
+                  imagemUrl: /arquivos/pastilhas/seed-tubo-aco.jpg
+                  abaixoDoMinimo: false
+                preco: 118.0
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/fornecedores/{id}/produtos:
+    put:
+      tags:
+      - Fornecedores
+      summary: Definir o que o fornecedor vende e o preço
+      description: 'Substitui a lista anterior desse fornecedor.
+
+
+        **Quem pode:** Fornecedores.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              produtos:
+              - pastilhaId: 9
+                preco: 389.9
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 14
+                fornecedor:
+                  id: 4
+                  nome: Aço Sul Distribuidora Ltda
+                  tipo: FORNECEDOR
+                  contato: Comercial
+                  telefone: (49) 3246-1000
+                  email: vendas@acosul.example.com
+                pastilha:
+                  id: 9
+                  codigo: CHP-AC-03
+                  descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                  fabricante:
+                    id: 1
+                    nome: Siderúrgica Planalto
+                    tipo: FABRICANTE
+                    contato: Vendas de aço
+                    telefone: (47) 3333-1111
+                    email: vendas@planalto.example.com
+                  estoqueMinimo: 6
+                  quantidadeAtual: 12
+                  imagemUrl: null
+                  abaixoDoMinimo: false
+                preco: 389.9
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/projetos/progresso:
+    get:
+      tags:
+      - Projetos
+      summary: Quadro de produção (aba Progresso)
+      description: 'Projetos em AGUARDANDO, EM_PRODUCAO, EM_ESTOQUE e PRONTO_ENTREGA; os mais antigos primeiro.
+
+
+        **Quem pode:** Progresso.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 4
+                nome: Escada marinheiro - Cliente MNO
+                descricao: Escada de acesso ao reservatório, liberada para entrega.
+                cliente: Cliente MNO
+                status: PRONTO_ENTREGA
+                dataCriacao: '2026-10-24T19:11:20.393839'
+                dataInicioProducao: '2026-10-25T19:11:20.393847'
+                dataFinalizacaoProducao: '2026-10-29T19:11:20.393851'
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 14
+                  texto: Separar materiais
+                  concluido: true
+                  ordem: 0
+                - id: 15
+                  texto: Corte e solda
+                  concluido: true
+                  ordem: 1
+                materiais:
+                - id: 10
+                  pastilha:
+                    id: 8
+                    codigo: TUB-ACO-48
+                    descricao: Tubo de aço inox 304 redondo 1.1/2" (barra de 6 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 15
+                    quantidadeAtual: 30
+                    imagemUrl: /arquivos/pastilhas/seed-tubo-aco.jpg
+                    abaixoDoMinimo: false
+                  quantidade: 2
+                - id: 11
+                  pastilha:
+                    id: 3
+                    codigo: TIN-ESM-04
+                    descricao: Tinta esmalte sintético exterior (lata 0,4 kg)
+                    fabricante:
+                      id: 2
+                      nome: Tintas Serrana
+                      tipo: FABRICANTE
+                      contato: Atendimento ao cliente
+                      telefone: (47) 3333-2222
+                      email: atendimento@serrana.example.com
+                    estoqueMinimo: 12
+                    quantidadeAtual: 8
+                    imagemUrl: /arquivos/pastilhas/seed-tinta-esmalte.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 1
+                anexos: []
+                totalChecklist: 4
+                concluidosChecklist: 4
+              - id: 3
+                nome: Portão basculante - Cliente JKL
+                descricao: Portão basculante pronto, aguardando a retirada.
+                cliente: null
+                status: EM_ESTOQUE
+                dataCriacao: '2026-10-25T19:11:20.390518'
+                dataInicioProducao: '2026-10-26T19:11:20.390527'
+                dataFinalizacaoProducao: '2026-10-30T19:11:20.39053'
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 10
+                  texto: Separar materiais
+                  concluido: true
+                  ordem: 0
+                - id: 11
+                  texto: Corte e solda
+                  concluido: true
+                  ordem: 1
+                materiais:
+                - id: 8
+                  pastilha:
+                    id: 2
+                    codigo: RDA-PORT-150
+                    descricao: Roda de portão em ferro fundido 150 mm
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 14
+                    imagemUrl: /arquivos/pastilhas/seed-roda-portao.jpg
+                    abaixoDoMinimo: false
+                  quantidade: 4
+                - id: 9
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 10
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 4
+                anexos: []
+                totalChecklist: 4
+                concluidosChecklist: 4
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/projetos/calendario:
+    get:
+      tags:
+      - Projetos
+      summary: Pedidos enviados e entregues (aba Calendário)
+      description: '**Quem pode:** Progresso.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 5
+                nome: Base para esteira - Cliente DEF
+                descricao: Base de sustentação para esteira transportadora.
+                cliente: Cliente DEF
+                status: PEDIDO_ENVIADO
+                dataCriacao: '2026-10-22T19:11:20.403039'
+                dataInicioProducao: '2026-10-23T19:11:20.403048'
+                dataFinalizacaoProducao: '2026-10-31T19:11:20.403051'
+                dataPedido: '2026-10-22'
+                metaEntrega: '2026-11-06'
+                dataEntrega: null
+                checklist:
+                - id: 18
+                  texto: Separar materiais
+                  concluido: true
+                  ordem: 0
+                - id: 19
+                  texto: Corte e solda
+                  concluido: true
+                  ordem: 1
+                materiais:
+                - id: 12
+                  pastilha:
+                    id: 1
+                    codigo: BAR-FE-01
+                    descricao: Barra de ferro quadrada 1" (barra de 6 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 20
+                    quantidadeAtual: 45
+                    imagemUrl: /arquivos/pastilhas/seed-barra-ferro-chata.jpg
+                    abaixoDoMinimo: false
+                  quantidade: 12
+                - id: 13
+                  pastilha:
+                    id: 5
+                    codigo: ELE-6013-25
+                    descricao: Eletrodo de solda E6013 2,5 mm (caixa 5 kg)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 15
+                    quantidadeAtual: 28
+                    imagemUrl: /arquivos/pastilhas/seed-eletrodo-e6013.jpg
+                    abaixoDoMinimo: false
+                  quantidade: 3
+                anexos: []
+                totalChecklist: 4
+                concluidosChecklist: 4
+              - id: 6
+                nome: Grade de proteção - Cliente GHI
+                descricao: Grade de proteção para máquina industrial.
+                cliente: Cliente GHI
+                status: ENTREGUE
+                dataCriacao: '2026-10-12T19:11:20.410389'
+                dataInicioProducao: '2026-10-13T19:11:20.410398'
+                dataFinalizacaoProducao: '2026-10-17T19:11:20.410402'
+                dataPedido: '2026-10-12'
+                metaEntrega: '2026-10-19'
+                dataEntrega: '2026-10-18T19:11:20.410411'
+                checklist:
+                - id: 22
+                  texto: Separar materiais
+                  concluido: true
+                  ordem: 0
+                - id: 23
+                  texto: Corte e solda
+                  concluido: true
+                  ordem: 1
+                materiais:
+                - id: 14
+                  pastilha:
+                    id: 8
+                    codigo: TUB-ACO-48
+                    descricao: Tubo de aço inox 304 redondo 1.1/2" (barra de 6 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 15
+                    quantidadeAtual: 30
+                    imagemUrl: /arquivos/pastilhas/seed-tubo-aco.jpg
+                    abaixoDoMinimo: false
+                  quantidade: 5
+                - id: 15
+                  pastilha:
+                    id: 6
+                    codigo: DIS-COR-125
+                    descricao: Disco de corte para aço 125 mm (1 mm)
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 30
+                    quantidadeAtual: 52
+                    imagemUrl: /arquivos/pastilhas/seed-disco-corte.jpg
+                    abaixoDoMinimo: false
+                  quantidade: 8
+                anexos: []
+                totalChecklist: 4
+                concluidosChecklist: 4
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/projetos/{id}:
+    get:
+      tags:
+      - Projetos
+      summary: Buscar um projeto
+      description: 'Inclui checklist, materiais e a lista de arquivos anexados.
+
+
+        **Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 1
+                nome: Cerca de metal - Cliente ABC
+                descricao: Cerca de metal sob medida para o pátio do cliente.
+                cliente: null
+                status: EM_PRODUCAO
+                dataCriacao: '2026-10-29T19:11:20.374247'
+                dataInicioProducao: '2026-10-30T19:11:20.37426'
+                dataFinalizacaoProducao: null
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 1
+                  texto: Separar os materiais da lista
+                  concluido: true
+                  ordem: 0
+                - id: 2
+                  texto: Fazer o ligamento (solda) das peças
+                  concluido: true
+                  ordem: 1
+                materiais:
+                - id: 1
+                  pastilha:
+                    id: 1
+                    codigo: BAR-FE-01
+                    descricao: Barra de ferro quadrada 1" (barra de 6 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 20
+                    quantidadeAtual: 45
+                    imagemUrl: /arquivos/pastilhas/seed-barra-ferro-chata.jpg
+                    abaixoDoMinimo: false
+                  quantidade: 10
+                - id: 2
+                  pastilha:
+                    id: 8
+                    codigo: TUB-ACO-48
+                    descricao: Tubo de aço inox 304 redondo 1.1/2" (barra de 6 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 15
+                    quantidadeAtual: 30
+                    imagemUrl: /arquivos/pastilhas/seed-tubo-aco.jpg
+                    abaixoDoMinimo: false
+                  quantidade: 4
+                anexos: []
+                totalChecklist: 5
+                concluidosChecklist: 2
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    put:
+      tags:
+      - Projetos
+      summary: Editar projeto (exige senha do administrador)
+      description: '`senhaAdmin` obrigatória. 5 senhas erradas seguidas bloqueiam por 15 minutos.
+
+
+        **Quem pode:** Progresso + senha de um administrador.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              nome: Portão deslizante - Cliente Silva
+              descricao: Portão 4 x 2,2 m em tubo de aço
+              checklist:
+              - texto: Cortar os tubos
+              - texto: Soldar a estrutura
+              - texto: Pintura
+              materiais:
+              - pastilhaId: 9
+                quantidade: 1
+              senhaAdmin: SenhaDoAdmin2026
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 7
+                nome: Portão deslizante - Cliente Silva
+                descricao: Portão 4 x 2,2 m em tubo de aço
+                cliente: null
+                status: AGUARDANDO
+                dataCriacao: '2026-11-01T19:11:31.994899'
+                dataInicioProducao: null
+                dataFinalizacaoProducao: null
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 30
+                  texto: Cortar os tubos
+                  concluido: false
+                  ordem: 0
+                - id: 31
+                  texto: Soldar a estrutura
+                  concluido: false
+                  ordem: 1
+                materiais:
+                - id: 18
+                  pastilha:
+                    id: 9
+                    codigo: CHP-AC-03
+                    descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 6
+                    quantidadeAtual: 14
+                    imagemUrl: null
+                    abaixoDoMinimo: false
+                  quantidade: 1
+                - id: 19
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 10
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 2
+                anexos:
+                - id: 2
+                  nomeOriginal: desenho-portao.pdf
+                  tipo: application/pdf
+                  tamanho: 193
+                  dataEnvio: '2026-11-01T19:11:32.122588'
+                totalChecklist: 3
+                concluidosChecklist: 0
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+        '429':
+          $ref: '#/components/responses/Erro429'
+    delete:
+      tags:
+      - Projetos
+      summary: Excluir projeto (exige senha do administrador)
+      description: 'Corpo com `senhaAdmin`. Os arquivos do projeto também são apagados do Storage.
+
+
+        **Quem pode:** Progresso + senha de um administrador.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              senhaAdmin: SenhaDoAdmin2026
+      responses:
+        '204':
+          description: Feito (sem conteúdo na resposta).
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+        '429':
+          $ref: '#/components/responses/Erro429'
+  /api/projetos:
+    post:
+      tags:
+      - Projetos
+      summary: Criar projeto (com ou sem arquivos)
+      description: 'Duas formas: **JSON** (só os dados) ou **multipart/form-data** com a parte `dados` (o JSON do projeto)
+        e partes `arquivos` (PDF, CAD, imagens..., até 20 MB cada, 20 por projeto). `anexosCopiar` copia arquivos de outro
+        projeto (botão Repetir). Se um arquivo for recusado, o projeto não é criado.
+
+
+        **Quem pode:** Progresso.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              nome: Portão deslizante - Cliente Silva
+              descricao: Portão 4 x 2 m em tubo de aço
+              checklist:
+              - texto: Cortar os tubos
+              - texto: Soldar a estrutura
+              - texto: Pintura
+              materiais:
+              - pastilhaId: 9
+                quantidade: 1
+              - pastilhaId: 7
+                quantidade: 2
+              anexosCopiar: []
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                dados:
+                  type: string
+                  description: JSON do projeto (mesmo formato do exemplo JSON)
+                arquivos:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required:
+              - dados
+            encoding:
+              dados:
+                contentType: application/json
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 7
+                nome: Portão deslizante - Cliente Silva
+                descricao: Portão 4 x 2 m em tubo de aço
+                cliente: null
+                status: AGUARDANDO
+                dataCriacao: '2026-11-01T19:11:31.994898833'
+                dataInicioProducao: null
+                dataFinalizacaoProducao: null
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 26
+                  texto: Cortar os tubos
+                  concluido: false
+                  ordem: 0
+                - id: 27
+                  texto: Soldar a estrutura
+                  concluido: false
+                  ordem: 1
+                materiais:
+                - id: 16
+                  pastilha:
+                    id: 9
+                    codigo: CHP-AC-03
+                    descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 6
+                    quantidadeAtual: 14
+                    imagemUrl: null
+                    abaixoDoMinimo: false
+                  quantidade: 1
+                - id: 17
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 10
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 2
+                anexos: []
+                totalChecklist: 3
+                concluidosChecklist: 0
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/projetos/{id}/status:
+    patch:
+      tags:
+      - Projetos
+      summary: Avançar ou voltar uma etapa
+      description: 'Uma etapa por vez: AGUARDANDO ↔ EM_PRODUCAO ↔ EM_ESTOQUE ↔ PRONTO_ENTREGA. Sem senha.
+
+
+        **Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              status: EM_PRODUCAO
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 7
+                nome: Portão deslizante - Cliente Silva
+                descricao: Portão 4 x 2,2 m em tubo de aço
+                cliente: null
+                status: EM_PRODUCAO
+                dataCriacao: '2026-11-01T19:11:31.994899'
+                dataInicioProducao: '2026-11-01T19:11:32.291183556'
+                dataFinalizacaoProducao: null
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 30
+                  texto: Cortar os tubos
+                  concluido: false
+                  ordem: 0
+                - id: 31
+                  texto: Soldar a estrutura
+                  concluido: false
+                  ordem: 1
+                materiais:
+                - id: 18
+                  pastilha:
+                    id: 9
+                    codigo: CHP-AC-03
+                    descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 6
+                    quantidadeAtual: 14
+                    imagemUrl: null
+                    abaixoDoMinimo: false
+                  quantidade: 1
+                - id: 19
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 10
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 2
+                anexos:
+                - id: 2
+                  nomeOriginal: desenho-portao.pdf
+                  tipo: application/pdf
+                  tamanho: 193
+                  dataEnvio: '2026-11-01T19:11:32.122588'
+                totalChecklist: 3
+                concluidosChecklist: 0
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/projetos/{id}/checklist/{itemId}:
+    patch:
+      tags:
+      - Projetos
+      summary: Marcar/desmarcar etapa do checklist
+      description: 'Só com o projeto EM_PRODUCAO.
+
+
+        **Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número do item do checklist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              concluido: true
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 7
+                nome: Portão deslizante - Cliente Silva
+                descricao: Portão 4 x 2,2 m em tubo de aço
+                cliente: null
+                status: EM_PRODUCAO
+                dataCriacao: '2026-11-01T19:11:31.994899'
+                dataInicioProducao: '2026-11-01T19:11:32.291184'
+                dataFinalizacaoProducao: null
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 30
+                  texto: Cortar os tubos
+                  concluido: true
+                  ordem: 0
+                - id: 31
+                  texto: Soldar a estrutura
+                  concluido: false
+                  ordem: 1
+                materiais:
+                - id: 18
+                  pastilha:
+                    id: 9
+                    codigo: CHP-AC-03
+                    descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 6
+                    quantidadeAtual: 14
+                    imagemUrl: null
+                    abaixoDoMinimo: false
+                  quantidade: 1
+                - id: 19
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 10
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 2
+                anexos:
+                - id: 2
+                  nomeOriginal: desenho-portao.pdf
+                  tipo: application/pdf
+                  tamanho: 193
+                  dataEnvio: '2026-11-01T19:11:32.122588'
+                totalChecklist: 3
+                concluidosChecklist: 1
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/projetos/{id}/enviar-pedido:
+    post:
+      tags:
+      - Projetos
+      summary: Enviar o pedido ao cliente (baixa o estoque)
+      description: 'Só em PRONTO_ENTREGA. Dá baixa em todos os materiais de uma vez; se faltar qualquer um, nada é baixado
+        (422).
+
+
+        **Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              cliente: Silva Metalurgia
+              metaEntrega: '2026-11-20'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 7
+                nome: Portão deslizante - Cliente Silva
+                descricao: Portão 4 x 2,2 m em tubo de aço
+                cliente: Silva Metalurgia
+                status: PEDIDO_ENVIADO
+                dataCriacao: '2026-11-01T19:11:31.994899'
+                dataInicioProducao: '2026-11-01T19:11:32.291184'
+                dataFinalizacaoProducao: '2026-11-01T19:11:32.355621'
+                dataPedido: '2026-11-01'
+                metaEntrega: '2026-11-20'
+                dataEntrega: null
+                checklist:
+                - id: 30
+                  texto: Cortar os tubos
+                  concluido: true
+                  ordem: 0
+                - id: 31
+                  texto: Soldar a estrutura
+                  concluido: false
+                  ordem: 1
+                materiais:
+                - id: 18
+                  pastilha:
+                    id: 9
+                    codigo: CHP-AC-03
+                    descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 6
+                    quantidadeAtual: 13
+                    imagemUrl: null
+                    abaixoDoMinimo: false
+                  quantidade: 1
+                - id: 19
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 8
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 2
+                anexos:
+                - id: 2
+                  nomeOriginal: desenho-portao.pdf
+                  tipo: application/pdf
+                  tamanho: 193
+                  dataEnvio: '2026-11-01T19:11:32.122588'
+                totalChecklist: 3
+                concluidosChecklist: 1
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/projetos/{id}/calendario:
+    patch:
+      tags:
+      - Projetos
+      summary: Alterar data do pedido e meta de entrega
+      description: '**Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              dataPedido: '2026-11-01'
+              metaEntrega: '2026-11-22'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 7
+                nome: Portão deslizante - Cliente Silva
+                descricao: Portão 4 x 2,2 m em tubo de aço
+                cliente: Silva Metalurgia
+                status: PEDIDO_ENVIADO
+                dataCriacao: '2026-11-01T19:11:31.994899'
+                dataInicioProducao: '2026-11-01T19:11:32.291184'
+                dataFinalizacaoProducao: '2026-11-01T19:11:32.355621'
+                dataPedido: '2026-11-01'
+                metaEntrega: '2026-11-22'
+                dataEntrega: null
+                checklist:
+                - id: 30
+                  texto: Cortar os tubos
+                  concluido: true
+                  ordem: 0
+                - id: 31
+                  texto: Soldar a estrutura
+                  concluido: false
+                  ordem: 1
+                materiais:
+                - id: 18
+                  pastilha:
+                    id: 9
+                    codigo: CHP-AC-03
+                    descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 6
+                    quantidadeAtual: 13
+                    imagemUrl: null
+                    abaixoDoMinimo: false
+                  quantidade: 1
+                - id: 19
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 8
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 2
+                anexos:
+                - id: 2
+                  nomeOriginal: desenho-portao.pdf
+                  tipo: application/pdf
+                  tamanho: 193
+                  dataEnvio: '2026-11-01T19:11:32.122588'
+                totalChecklist: 3
+                concluidosChecklist: 1
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/projetos/{id}/entregar:
+    post:
+      tags:
+      - Projetos
+      summary: Marcar como entregue
+      description: 'Só para pedidos enviados.
+
+
+        **Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 7
+                nome: Portão deslizante - Cliente Silva
+                descricao: Portão 4 x 2,2 m em tubo de aço
+                cliente: Silva Metalurgia
+                status: ENTREGUE
+                dataCriacao: '2026-11-01T19:11:31.994899'
+                dataInicioProducao: '2026-11-01T19:11:32.291184'
+                dataFinalizacaoProducao: '2026-11-01T19:11:32.355621'
+                dataPedido: '2026-11-01'
+                metaEntrega: '2026-11-22'
+                dataEntrega: '2026-11-01T19:11:32.463295392'
+                checklist:
+                - id: 30
+                  texto: Cortar os tubos
+                  concluido: true
+                  ordem: 0
+                - id: 31
+                  texto: Soldar a estrutura
+                  concluido: false
+                  ordem: 1
+                materiais:
+                - id: 18
+                  pastilha:
+                    id: 9
+                    codigo: CHP-AC-03
+                    descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 6
+                    quantidadeAtual: 13
+                    imagemUrl: null
+                    abaixoDoMinimo: false
+                  quantidade: 1
+                - id: 19
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 8
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 2
+                anexos:
+                - id: 2
+                  nomeOriginal: desenho-portao.pdf
+                  tipo: application/pdf
+                  tamanho: 193
+                  dataEnvio: '2026-11-01T19:11:32.122588'
+                totalChecklist: 3
+                concluidosChecklist: 1
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/projetos/{id}/anexos:
+    post:
+      tags:
+      - Projetos
+      summary: Anexar arquivos a um projeto existente (exige senha do administrador)
+      description: 'multipart/form-data: partes `arquivos` e campo `senhaAdmin`.
+
+
+        **Quem pode:** Progresso + senha de um administrador.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                arquivos:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Um ou mais arquivos (PDF, CAD, imagens, documentos, ZIP)
+                senhaAdmin:
+                  type: string
+                  description: Senha de um administrador
+              required:
+              - arquivos
+              - senhaAdmin
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 7
+                nome: Portão deslizante - Cliente Silva
+                descricao: Portão 4 x 2 m em tubo de aço
+                cliente: null
+                status: AGUARDANDO
+                dataCriacao: '2026-11-01T19:11:31.994899'
+                dataInicioProducao: null
+                dataFinalizacaoProducao: null
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 26
+                  texto: Cortar os tubos
+                  concluido: false
+                  ordem: 0
+                - id: 27
+                  texto: Soldar a estrutura
+                  concluido: false
+                  ordem: 1
+                materiais:
+                - id: 16
+                  pastilha:
+                    id: 9
+                    codigo: CHP-AC-03
+                    descricao: Chapa de aço carbono 3 mm (1,2 x 3 m)
+                    fabricante:
+                      id: 1
+                      nome: Siderúrgica Planalto
+                      tipo: FABRICANTE
+                      contato: Vendas de aço
+                      telefone: (47) 3333-1111
+                      email: vendas@planalto.example.com
+                    estoqueMinimo: 6
+                    quantidadeAtual: 14
+                    imagemUrl: null
+                    abaixoDoMinimo: false
+                  quantidade: 1
+                - id: 17
+                  pastilha:
+                    id: 7
+                    codigo: DOB-PORT-REF
+                    descricao: Dobradiça de portão reforçada com pino regulável
+                    fabricante:
+                      id: 3
+                      nome: Ferragens Fraiburgo
+                      tipo: FORNECEDOR
+                      contato: Vendas
+                      telefone: (49) 3222-4444
+                      email: vendas@ferragensfraiburgo.example.com
+                    estoqueMinimo: 10
+                    quantidadeAtual: 10
+                    imagemUrl: /arquivos/pastilhas/seed-dobradica-portao.jpg
+                    abaixoDoMinimo: true
+                  quantidade: 2
+                anexos:
+                - id: 2
+                  nomeOriginal: desenho-portao.pdf
+                  tipo: application/pdf
+                  tamanho: 193
+                  dataEnvio: '2026-11-01T19:11:32.12258808'
+                totalChecklist: 3
+                concluidosChecklist: 0
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+        '429':
+          $ref: '#/components/responses/Erro429'
+  /api/projetos/{id}/anexos/{anexoId}:
+    get:
+      tags:
+      - Projetos
+      summary: Baixar/abrir um arquivo do projeto
+      description: 'PDF e imagens voltam para abrir no navegador (inline); os demais (DWG, STEP, ZIP...) como download. O
+        arquivo é privado: só passa pelo backend.
+
+
+        **Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      - name: anexoId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número do arquivo
+      responses:
+        '200':
+          description: O arquivo (o tipo vem no cabeçalho Content-Type).
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    delete:
+      tags:
+      - Projetos
+      summary: Remover um arquivo do projeto (exige senha do administrador)
+      description: 'Corpo com `senhaAdmin`.
+
+
+        **Quem pode:** Progresso + senha de um administrador.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      - name: anexoId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número do arquivo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              senhaAdmin: SenhaDoAdmin2026
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 8
+                nome: Grade de proteção - Cliente Lima
+                descricao: null
+                cliente: null
+                status: AGUARDANDO
+                dataCriacao: '2026-11-01T19:11:32.01772'
+                dataInicioProducao: null
+                dataFinalizacaoProducao: null
+                dataPedido: null
+                metaEntrega: null
+                dataEntrega: null
+                checklist:
+                - id: 29
+                  texto: Medir no local
+                  concluido: false
+                  ordem: 0
+                materiais: []
+                anexos: []
+                totalChecklist: 1
+                concluidosChecklist: 0
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+        '429':
+          $ref: '#/components/responses/Erro429'
+  /api/modelos-projeto:
+    get:
+      tags:
+      - Modelos de projeto
+      summary: Listar modelos
+      description: '**Quem pode:** Progresso.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 1
+                nome: Cerca de metal (padrão)
+                descricao: Cerca metálica com portão, conforme medidas do cliente
+                checklist:
+                - Cortar os tubos nas medidas
+                - Soldar a estrutura da cerca
+                materiais:
+                - pastilhaId: 1
+                  quantidade: 10
+                - pastilhaId: 8
+                  quantidade: 4
+                dataCriacao: '2026-11-01T19:11:20.534867'
+              - id: 2
+                nome: Suporte metálico (padrão)
+                descricao: Suporte em aço para fixação de equipamentos
+                checklist:
+                - Preparar o material
+                - Cortar e furar as peças
+                materiais:
+                - pastilhaId: 1
+                  quantidade: 4
+                - pastilhaId: 6
+                  quantidade: 6
+                dataCriacao: '2026-11-01T19:11:20.54461'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags:
+      - Modelos de projeto
+      summary: Salvar modelo pelo nome
+      description: 'Cria um modelo novo ou, se já existir um com o mesmo nome, atualiza esse.
+
+
+        **Quem pode:** Progresso.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              nome: Portão deslizante padrão
+              descricao: Modelo base
+              checklist:
+              - Cortar os tubos
+              - Soldar
+              - Pintar
+              materiais:
+              - pastilhaId: 7
+                quantidade: 2
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 3
+                nome: Portão deslizante padrão
+                descricao: Modelo base
+                checklist:
+                - Cortar os tubos
+                - Soldar
+                materiais:
+                - pastilhaId: 7
+                  quantidade: 2
+                dataCriacao: '2026-11-01T19:11:32.739281021'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/modelos-projeto/{id}:
+    get:
+      tags:
+      - Modelos de projeto
+      summary: Buscar um modelo
+      description: '**Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 1
+                nome: Cerca de metal (padrão)
+                descricao: Cerca metálica com portão, conforme medidas do cliente
+                checklist:
+                - Cortar os tubos nas medidas
+                - Soldar a estrutura da cerca
+                materiais:
+                - pastilhaId: 1
+                  quantidade: 10
+                - pastilhaId: 8
+                  quantidade: 4
+                dataCriacao: '2026-11-01T19:11:20.534867'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    put:
+      tags:
+      - Modelos de projeto
+      summary: Editar modelo
+      description: '**Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              nome: Portão deslizante padrão
+              descricao: Modelo base revisado
+              checklist:
+              - Cortar os tubos
+              - Soldar
+              - Pintar
+              materiais:
+              - pastilhaId: 7
+                quantidade: 3
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 3
+                nome: Portão deslizante padrão
+                descricao: Modelo base revisado
+                checklist:
+                - Cortar os tubos
+                - Soldar
+                materiais:
+                - pastilhaId: 7
+                  quantidade: 3
+                dataCriacao: '2026-11-01T19:11:32.739281'
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+    delete:
+      tags:
+      - Modelos de projeto
+      summary: Excluir modelo
+      description: 'Projetos já criados não são afetados.
+
+
+        **Quem pode:** Progresso.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '204':
+          description: Feito (sem conteúdo na resposta).
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/financeiro/resumo:
+    get:
+      tags:
+      - Financeiro
+      summary: Resumo financeiro
+      description: 'Valor parado em estoque, total de vendas e de planos, margem.
+
+
+        **Quem pode:** Financeiro.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                valorEmEstoque: 8549.6
+                totalVendas: 9000.0
+                quantidadeVendas: 2
+                totalPlanos: 6300.0
+                quantidadePlanos: 2
+                margemVendas: 7541.3
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/financeiro/pecas:
+    get:
+      tags:
+      - Financeiro
+      summary: Preço de cada item por fornecedor
+      description: 'O menor preço é usado para o valor em estoque e o custo dos projetos.
+
+
+        **Quem pode:** Financeiro.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 1
+                codigo: BAR-FE-01
+                descricao: Barra de ferro quadrada 1" (barra de 6 m)
+                imagemUrl: /arquivos/pastilhas/seed-barra-ferro-chata.jpg
+                quantidadeAtual: 45
+                fornecedores:
+                - fornecedorId: 1
+                  fornecedor: Siderúrgica Planalto
+                  preco: 62.0
+                - fornecedorId: 3
+                  fornecedor: Ferragens Fraiburgo
+                  preco: 68.0
+                menorPreco: 62.0
+                valorEmEstoque: 2790.0
+              - id: 2
+                codigo: RDA-PORT-150
+                descricao: Roda de portão em ferro fundido 150 mm
+                imagemUrl: /arquivos/pastilhas/seed-roda-portao.jpg
+                quantidadeAtual: 14
+                fornecedores:
+                - fornecedorId: 3
+                  fornecedor: Ferragens Fraiburgo
+                  preco: 38.9
+                menorPreco: 38.9
+                valorEmEstoque: 544.6
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/financeiro/projetos:
+    get:
+      tags:
+      - Financeiro
+      summary: Custo e margem de cada projeto
+      description: '**Quem pode:** Financeiro.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 1
+                nome: Cerca de metal - Cliente ABC
+                cliente: null
+                status: EM_PRODUCAO
+                custoMateriais: 1178.8
+                custoIncompleto: false
+                valorPlano: 4500.0
+                valorVenda: 0
+                margem: 3321.2
+              - id: 2
+                nome: Suporte industrial - Cliente XYZ
+                cliente: null
+                status: AGUARDANDO
+                custoMateriais: 310.9
+                custoIncompleto: false
+                valorPlano: 1800.0
+                valorVenda: 0
+                margem: 1489.1
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+  /api/vendas:
+    get:
+      tags:
+      - Vendas e planos
+      summary: Listar vendas e planos
+      description: '**Quem pode:** Financeiro.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 2
+                cliente: Cliente XYZ
+                projetoId: 2
+                projetoNome: Suporte industrial - Cliente XYZ
+                descricao: Suporte para fixação de equipamento.
+                valor: 1800.0
+                status: PLANO
+                dataCriacao: '2026-10-30'
+                dataVenda: null
+                custoMateriais: 310.9
+                custoIncompleto: false
+                margem: 1489.1
+              - id: 1
+                cliente: Cliente ABC
+                projetoId: 1
+                projetoNome: Cerca de metal - Cliente ABC
+                descricao: Cerca de metal sob medida, com instalação.
+                valor: 4500.0
+                status: PLANO
+                dataCriacao: '2026-10-30'
+                dataVenda: null
+                custoMateriais: 1178.8
+                custoIncompleto: false
+                margem: 3321.2
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags:
+      - Vendas e planos
+      summary: Criar plano para um cliente
+      description: 'Começa como PLANO; `projetoId` é opcional.
+
+
+        **Quem pode:** Financeiro.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              cliente: Silva Metalurgia
+              projetoId: 7
+              descricao: Portão deslizante instalado
+              valor: 4200.0
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 5
+                cliente: Silva Metalurgia
+                projetoId: 7
+                projetoNome: Portão deslizante - Cliente Silva
+                descricao: Portão deslizante instalado
+                valor: 4200.0
+                status: PLANO
+                dataCriacao: '2026-11-01'
+                dataVenda: null
+                custoMateriais: 432.9
+                custoIncompleto: false
+                margem: 3767.1
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/vendas/{id}:
+    get:
+      tags:
+      - Vendas e planos
+      summary: Buscar uma venda/plano
+      description: '**Quem pode:** Financeiro.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 2
+                cliente: Cliente XYZ
+                projetoId: 2
+                projetoNome: Suporte industrial - Cliente XYZ
+                descricao: Suporte para fixação de equipamento.
+                valor: 1800.0
+                status: PLANO
+                dataCriacao: '2026-10-30'
+                dataVenda: null
+                custoMateriais: 310.9
+                custoIncompleto: false
+                margem: 1489.1
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    put:
+      tags:
+      - Vendas e planos
+      summary: Editar venda/plano
+      description: '**Quem pode:** Financeiro.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              cliente: Silva Metalurgia
+              projetoId: 7
+              descricao: Portão deslizante instalado
+              valor: 4350.0
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 5
+                cliente: Silva Metalurgia
+                projetoId: 7
+                projetoNome: Portão deslizante - Cliente Silva
+                descricao: Portão deslizante instalado
+                valor: 4350.0
+                status: PLANO
+                dataCriacao: '2026-11-01'
+                dataVenda: null
+                custoMateriais: 432.9
+                custoIncompleto: false
+                margem: 3917.1
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    delete:
+      tags:
+      - Vendas e planos
+      summary: Excluir venda/plano
+      description: '**Quem pode:** Financeiro.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '204':
+          description: Feito (sem conteúdo na resposta).
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/vendas/{id}/fechar:
+    post:
+      tags:
+      - Vendas e planos
+      summary: Fechar o plano (vira venda)
+      description: '**Quem pode:** Financeiro.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 5
+                cliente: Silva Metalurgia
+                projetoId: 7
+                projetoNome: Portão deslizante - Cliente Silva
+                descricao: Portão deslizante instalado
+                valor: 4350.0
+                status: VENDA
+                dataCriacao: '2026-11-01'
+                dataVenda: '2026-11-01'
+                custoMateriais: 432.9
+                custoIncompleto: false
+                margem: 3917.1
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/mensagens/contatos:
+    get:
+      tags:
+      - Mensagens
+      summary: Contas para conversar
+      description: 'Com a última mensagem e quantas não foram lidas.
+
+
+        **Quem pode:** Conta logada.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 2
+                nome: Operador de Estoque
+                role: OPERADOR
+                permissoes:
+                - MOVIMENTACOES
+                - PASTILHAS
+                ultimaMensagem: null
+                naoLidas: 0
+              - id: 3
+                nome: Setor Financeiro
+                role: OPERADOR
+                permissoes:
+                - FINANCEIRO
+                - FORNECEDORES
+                ultimaMensagem: null
+                naoLidas: 0
+        '401':
+          $ref: '#/components/responses/Erro401'
+  /api/mensagens/nao-lidas:
+    get:
+      tags:
+      - Mensagens
+      summary: Total de mensagens não lidas
+      description: 'Usado no aviso do menu.
+
+
+        **Quem pode:** Conta logada.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                total: 0
+                ultimoRemetente: null
+        '401':
+          $ref: '#/components/responses/Erro401'
+  /api/mensagens/conversa/{usuarioId}:
+    get:
+      tags:
+      - Mensagens
+      summary: Abrir conversa
+      description: 'Últimas 200 mensagens; marca as recebidas como lidas.
+
+
+        **Quem pode:** Conta logada.'
+      parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Conta com quem se conversa
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example: []
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '404':
+          $ref: '#/components/responses/Erro404'
+    post:
+      tags:
+      - Mensagens
+      summary: Enviar mensagem de texto
+      description: '**Quem pode:** Conta logada.'
+      parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Conta destinatária
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              texto: Bom dia! A chapa de 3 mm chegou, já dei entrada.
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 4
+                remetenteId: 1
+                destinatarioId: 2
+                texto: Bom dia! A chapa de 3 mm chegou, já dei entrada.
+                temImagem: false
+                dataHora: '2026-11-01T19:11:32.884497725'
+                lida: false
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/mensagens/conversa/{usuarioId}/imagem:
+    post:
+      tags:
+      - Mensagens
+      summary: Enviar imagem (com legenda opcional)
+      description: 'multipart/form-data: `arquivo` (PNG, JPEG, WEBP ou GIF até 5 MB) e `texto` opcional. A imagem é privada.
+
+
+        **Quem pode:** Conta logada.'
+      parameters:
+      - name: usuarioId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Conta destinatária
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                arquivo:
+                  type: string
+                  format: binary
+                  description: Imagem (PNG, JPEG, WEBP ou GIF)
+                texto:
+                  type: string
+                  description: Legenda opcional
+              required:
+              - arquivo
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 5
+                remetenteId: 1
+                destinatarioId: 2
+                texto: Foto da peça
+                temImagem: true
+                dataHora: '2026-11-01T19:11:32.913638402'
+                lida: false
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/mensagens/{mensagemId}/imagem:
+    get:
+      tags:
+      - Mensagens
+      summary: Baixar a imagem de uma mensagem
+      description: 'Só para quem enviou ou recebeu.
+
+
+        **Quem pode:** Conta logada (remetente ou destinatário).'
+      parameters:
+      - name: mensagemId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número da mensagem
+      responses:
+        '200':
+          description: O arquivo (o tipo vem no cabeçalho Content-Type).
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/usuarios:
+    get:
+      tags:
+      - Usuários
+      summary: Listar contas
+      description: 'Mostra perfil, abas liberadas, se o 2FA está ativo e se há troca de senha pendente. Senhas e segredos
+        nunca saem.
+
+
+        **Quem pode:** Administrador ou Usuários.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 1
+                nome: Administrador
+                username: admin
+                role: ADMIN
+                permissoes:
+                - MOVIMENTACOES
+                - PASTILHAS
+                doisFatoresAtivo: true
+                trocarSenha: false
+              - id: 2
+                nome: Operador de Estoque
+                username: operador
+                role: OPERADOR
+                permissoes:
+                - MOVIMENTACOES
+                - PASTILHAS
+                doisFatoresAtivo: false
+                trocarSenha: true
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+    post:
+      tags:
+      - Usuários
+      summary: Criar conta
+      description: 'A pessoa troca a senha e configura o 2FA no primeiro login. Quem não é administrador só pode conceder
+        abas que tem.
+
+
+        **Quem pode:** Administrador ou Usuários.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              nome: Setor de Compras
+              username: compras
+              senha: Setor2026novo
+              role: OPERADOR
+              permissoes:
+              - FORNECEDORES
+              - MOVIMENTACOES
+      responses:
+        '201':
+          description: Criado.
+          content:
+            application/json:
+              example:
+                id: 4
+                nome: Compras
+                username: compras
+                role: OPERADOR
+                permissoes:
+                - MOVIMENTACOES
+                - FORNECEDORES
+                doisFatoresAtivo: false
+                trocarSenha: true
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/usuarios/{id}:
+    put:
+      tags:
+      - Usuários
+      summary: Editar conta (e redefinir senha)
+      description: '`senha` é opcional: se enviada, a pessoa troca no próximo login e as sessões dela são encerradas.
+
+
+        **Quem pode:** Administrador ou Usuários.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              nome: Setor de Compras
+              username: compras
+              role: OPERADOR
+              permissoes:
+              - FORNECEDORES
+              - MOVIMENTACOES
+              - PASTILHAS
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 4
+                nome: Setor de Compras
+                username: compras
+                role: OPERADOR
+                permissoes:
+                - MOVIMENTACOES
+                - PASTILHAS
+                doisFatoresAtivo: false
+                trocarSenha: true
+        '400':
+          $ref: '#/components/responses/Erro400'
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '422':
+          $ref: '#/components/responses/Erro422'
+    delete:
+      tags:
+      - Usuários
+      summary: Excluir conta
+      description: 'Não é possível excluir a própria conta nem o único administrador.
+
+
+        **Quem pode:** Administrador ou Usuários.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '204':
+          description: Feito (sem conteúdo na resposta).
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+        '409':
+          $ref: '#/components/responses/Erro409'
+        '422':
+          $ref: '#/components/responses/Erro422'
+  /api/usuarios/{id}/redefinir-2fa:
+    post:
+      tags:
+      - Usuários
+      summary: Redefinir o 2FA (celular perdido)
+      description: 'Desliga o 2FA e encerra as sessões da conta; ela configura o app de novo no próximo login.
+
+
+        **Quem pode:** Administrador.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 4
+                nome: Setor de Compras
+                username: compras
+                role: OPERADOR
+                permissoes:
+                - MOVIMENTACOES
+                - PASTILHAS
+                doisFatoresAtivo: false
+                trocarSenha: true
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
+  /api/seguranca/eventos:
+    get:
+      tags:
+      - Segurança
+      summary: Eventos de segurança (últimos 200)
+      description: 'Data, tipo, conta, detalhe e IP. Nunca contém senhas nem códigos.
+
+
+        **Quem pode:** Administrador.'
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+              - id: 14
+                dataHora: '2026-11-01T19:11:33.10124'
+                tipo: USUARIO_EXCLUIDO
+                usuario: admin
+                detalhe: Excluiu a conta compras
+                ip: 127.0.0.1
+              - id: 13
+                dataHora: '2026-11-01T19:11:33.056221'
+                tipo: 2FA_REDEFINIDO
+                usuario: admin
+                detalhe: Redefiniu o 2FA de compras
+                ip: 127.0.0.1
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de acesso (o `token` da última etapa do login). Vale 8 horas.
+  schemas:
+    Erro:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+  responses:
+    Erro400:
+      description: Dados inválidos (campo obrigatório vazio, formato errado).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            status: 400
+            message: 'nome: must not be blank'
+            timestamp: '2026-11-01T22:10:00Z'
+    Erro401:
+      description: Sem login, login vencido ou encerrado ("Sair"), ou etapa de login expirada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            status: 401
+            message: Sessão expirada ou inválida. Entre de novo.
+            timestamp: '2026-11-01T22:10:00Z'
+    Erro403:
+      description: A conta não tem permissão para esta aba/ação.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            status: 403
+            message: Você não tem permissão para esta ação.
+            timestamp: '2026-11-01T22:10:00Z'
+    Erro404:
+      description: Registro não encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            status: 404
+            message: 'Registro não encontrado: 99'
+            timestamp: '2026-11-01T22:10:00Z'
+    Erro409:
+      description: 'Não dá para excluir/alterar: o registro está ligado a outros cadastros.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            status: 409
+            message: 'Não foi possível concluir: este registro está ligado a outros cadastros (movimentações, itens, projetos...).'
+            timestamp: '2026-11-01T22:10:00Z'
+    Erro422:
+      description: 'Regra de negócio recusou (ex.: estoque insuficiente, senha do administrador incorreta, senha fraca).'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            status: 422
+            message: 'Estoque insuficiente para a pastilha BAR-FE-01. Disponível: 3'
+            timestamp: '2026-11-01T22:10:00Z'
+    Erro429:
+      description: 'Muitas tentativas erradas seguidas: bloqueio de 15 minutos.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            status: 429
+            message: Muitas tentativas erradas. Tente de novo em 15 minutos.
+            timestamp: '2026-11-01T22:10:00Z'

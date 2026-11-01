@@ -29,6 +29,11 @@ import com.smartstock.backend.repository.MensagemRepository;
 import com.smartstock.backend.repository.UsuarioRepository;
 import com.smartstock.backend.storage.Armazenamento;
 
+/**
+ * <b>Em palavras simples:</b> Regras das Mensagens: envio de texto e imagem entre contas, lista de contatos com a última mensagem,
+ * contagem de não lidas e marcação como lida ao abrir a conversa. As imagens são privadas e só são
+ * entregues a quem enviou ou recebeu.
+ */
 @Service
 public class MensagemService {
 

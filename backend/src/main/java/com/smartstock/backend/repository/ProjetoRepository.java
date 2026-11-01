@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.smartstock.backend.model.Projeto;
 import com.smartstock.backend.model.StatusProjeto;
 
+/**
+ * <b>Em palavras simples:</b> Acesso à tabela de projetos (por etapa, para montar as abas Progresso e Calendário).
+ */
 public interface ProjetoRepository extends JpaRepository<Projeto, Long> {
     List<Projeto> findByStatusInOrderByDataCriacaoDesc(List<StatusProjeto> status);
 

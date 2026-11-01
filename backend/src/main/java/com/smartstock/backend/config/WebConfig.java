@@ -8,6 +8,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import com.smartstock.backend.storage.Armazenamento;
 import com.smartstock.backend.storage.LocalStorage;
 
+/**
+ * <b>Em palavras simples:</b> Configurações gerais da parte web do backend.
+ *
+ * Hoje cuida de uma coisa só: no modo de testes (perfil "h2"), as fotos dos itens ficam numa pasta do
+ * computador e este arquivo faz o backend entregá-las no endereço /arquivos/pastilhas/... No uso
+ * normal as fotos estão no Supabase Storage e este trecho não é usado.
+ */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 

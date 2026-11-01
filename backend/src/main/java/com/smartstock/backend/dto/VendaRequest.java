@@ -6,6 +6,9 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * <b>Em palavras simples:</b> Formato dos dados para criar ou editar um plano/venda: cliente, projeto (opcional), descrição e valor.
+ */
 public class VendaRequest {
 
     @NotBlank

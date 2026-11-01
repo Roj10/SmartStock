@@ -1,3 +1,7 @@
+/*
+ * Em palavras simples: Tela Financeiro: resumo de valores, preço de cada item por fornecedor (e o menor deles),
+ * custo e margem dos projetos, e os planos (orçamentos) e vendas.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';

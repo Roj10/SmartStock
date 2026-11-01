@@ -16,6 +16,12 @@ import com.smartstock.backend.model.Role;
 import com.smartstock.backend.model.Usuario;
 import com.smartstock.backend.repository.UsuarioRepository;
 
+/**
+ * <b>Em palavras simples:</b> Ensina o Spring Security a encontrar uma conta pelo nome de usuário.
+ *
+ * No login (e a cada pedido com token), o Spring pergunta "quem é fulano?"; esta classe busca a conta no
+ * banco e devolve o perfil e as permissões (PERM_PASTILHAS, PERM_PROJETOS...) que as rotas conferem.
+ */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 

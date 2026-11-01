@@ -19,6 +19,10 @@ import com.smartstock.backend.model.Venda;
 import com.smartstock.backend.repository.ProjetoRepository;
 import com.smartstock.backend.repository.VendaRepository;
 
+/**
+ * <b>Em palavras simples:</b> Regras de vendas e planos: criar um plano (orçamento) para um cliente, ligado ou não a um projeto,
+ * editar, fechar como venda e excluir.
+ */
 @Service
 @Transactional
 public class VendaService {
@@ -40,6 +44,12 @@ public class VendaService {
         return vendaRepository.findAllByOrderByDataCriacaoDescIdDesc().stream()
                 .map(v -> paraResposta(v, precos))
                 .toList();
+    }
+
+    /** Uma venda/plano pelo número, com custo e margem calculados. */
+    @Transactional(readOnly = true)
+    public VendaResposta obter(Long id) {
+        return resposta(buscar(id));
     }
 
     public VendaResposta criar(VendaRequest request) {

@@ -12,6 +12,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+/**
+ * <b>Em palavras simples:</b> Tabela checklist_itens: cada etapa do checklist de um projeto (ex.: "Cortar os tubos"), em ordem,
+ * marcada ou não como concluída.
+ *
+ * As classes da pasta "model" são as tabelas do banco escritas em Java: cada campo é uma coluna
+ * (@Column), e @ManyToOne/@OneToMany ligam uma tabela à outra.
+ */
 @Entity
 @Table(name = "checklist_itens")
 public class ChecklistItem {

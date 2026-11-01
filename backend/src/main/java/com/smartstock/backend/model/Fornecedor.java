@@ -9,6 +9,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/**
+ * <b>Em palavras simples:</b> Tabela fornecedores: empresas que fabricam e/ou vendem os itens (tipo FABRICANTE, FORNECEDOR ou AMBOS).
+ */
 @Entity
 @Table(name = "fornecedores")
 public class Fornecedor {

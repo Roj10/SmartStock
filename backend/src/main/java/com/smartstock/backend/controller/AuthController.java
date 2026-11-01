@@ -17,6 +17,14 @@ import com.smartstock.backend.service.AuthService;
 
 import jakarta.validation.Valid;
 
+/**
+ * <b>Em palavras simples:</b> Rotas do login (endereços /api/auth/...).
+ *
+ * Um "controller" é a porta de entrada da API: recebe o pedido que vem do navegador, passa para o
+ * "service" fazer o trabalho e devolve a resposta. Aqui ficam as etapas do login:
+ * 1) usuário e senha; 2) configurar ou digitar o código do app autenticador (2FA);
+ * 3) trocar a senha, quando exigido; e "sair". São as únicas rotas abertas sem login.
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

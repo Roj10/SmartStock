@@ -2,6 +2,9 @@ package com.smartstock.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * <b>Em palavras simples:</b> Formato de um item do checklist ao criar ou editar um projeto (ex.: "Soldar a estrutura").
+ */
 public class ChecklistItemRequest {
 
     @NotBlank

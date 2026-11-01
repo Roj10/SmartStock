@@ -14,6 +14,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+/**
+ * <b>Em palavras simples:</b> Tabela movimentacoes: cada entrada ou saída de estoque, com data, quantidade, item, fornecedor e quem registrou.
+ */
 @Entity
 @Table(name = "movimentacoes")
 public class Movimentacao {

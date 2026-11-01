@@ -2,6 +2,9 @@ package com.smartstock.backend.dto;
 
 import java.util.Set;
 
+/**
+ * <b>Em palavras simples:</b> Formato antigo da resposta de login. Não é mais usado: o login em etapas responde com AuthDtos.RespostaLogin.
+ */
 public class LoginResponse {
 
     private String token;

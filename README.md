@@ -25,6 +25,8 @@ vê o lado financeiro (preços por fornecedor, vendas e margem) e conversa entre
 11. [Configurações](#11-configurações)
 12. [Problemas comuns](#12-problemas-comuns)
 13. [Próximos passos e créditos](#13-próximos-passos-e-créditos)
+14. [Publicando na AWS (EC2)](#14-publicando-na-aws-ec2)
+15. [Documentação do projeto (relatório)](#15-documentação-do-projeto-relatório)
 
 ---
 
@@ -227,7 +229,10 @@ Senhas novas precisam ter 8 caracteres ou mais, com letras e números.
   Mesmo que alguém tente chamar a API "na mão", sem a permissão recebe erro 403.
 - **Banco de dados (PostgreSQL no Supabase):** guarda usuários, itens, movimentações, projetos, vendas e mensagens, no
   schema `smartstock` (fora do `public`, que o Supabase expõe pela API REST dele). As tabelas são criadas e atualizadas
-  pelo próprio backend; os dados de exemplo entram só quando o banco está vazio.
+  por **migrations** (Flyway): arquivos SQL numerados em `backend/src/main/resources/db/migration` (`V1__...`,
+  `V2__...`), aplicados em ordem, uma única vez cada, ao iniciar o backend. Para mudar o banco, cria-se um arquivo novo
+  (`V3__...`) — nunca se altera um que já rodou. O Hibernate só **confere** se as tabelas batem com o código. Os dados de
+  exemplo entram só quando o banco está vazio.
 - **Imagens e arquivos (Supabase Storage):** fotos dos itens ficam no bucket público `pastilhas` (abrem direto pelo
   endereço). Imagens das conversas e arquivos dos projetos ficam nos buckets **privados** `mensagens` e `projetos`: só o
   backend lê, com a chave secreta, e entrega a quem tem permissão. O tipo de cada arquivo é conferido pelo conteúdo.
@@ -333,6 +338,8 @@ SmartStock/
 │       │   └── exception/           Tratamento de erros
 │       └── resources/
 │           ├── application.properties   Configurações
+│           ├── db/migration/            Migrations do banco (Flyway): V1 esquema inicial, V2 segurança/2FA
+│           ├── static/openapi.yaml      Documentação da API com exemplos (aberta em /swagger-ui.html)
 │           └── seed-images/             Fotos dos dados de exemplo (+ CREDITOS.md)
 └── frontend/                        Interface (React 19 + Vite)
     ├── package.json                 Dependências e comandos do frontend
@@ -342,12 +349,40 @@ SmartStock/
         ├── context/                 Estado de login e permissões
         ├── api/client.js            Configuração das chamadas à API
         └── index.css, chat.css      Estilos
+├── deploy/                          Publicação na AWS EC2 (Nginx, serviço systemd, scripts)
+└── docs/                            Relatório: requisitos, casos de uso, diagramas, descrição comercial
 ```
 
 ## 10. API (resumo)
 
 Todas as rotas começam com `/api` e, exceto as do login, exigem o token de acesso no cabeçalho
-`Authorization: Bearer ...`.
+`Authorization: Bearer ...`. Criações respondem **201 Created**, exclusões **204 No Content** e erros vêm sempre no
+formato `{"status": 409, "message": "...", "timestamp": "..."}`.
+
+**Documentação interativa (Swagger):** com o backend rodando, abra **http://localhost:8080/swagger-ui.html**. Lá estão
+todas as 66 rotas, com descrição, quem pode usar, exemplos de envio e respostas reais. Para testar pela página: faça o
+login em `POST /api/auth/login` (botão *Try it out*), siga as etapas do 2FA, copie o `token` final, clique em
+**Authorize** e cole. No seletor do topo há também a versão gerada automaticamente do código (*Gerado do codigo*).
+
+**Exemplo com `curl`** (login em etapas e um cadastro):
+
+```bash
+# 1) usuário e senha -> devolve a próxima etapa e um "desafio" (vale 5 minutos)
+curl -s -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" \
+     -d '{"username":"admin","senha":"SUA_SENHA"}'
+# {"etapa":"CODIGO_2FA","desafio":"eyJ...","token":null,...}
+
+# 2) código de 6 dígitos do app autenticador -> devolve o token de acesso (vale 8 horas)
+curl -s -X POST http://localhost:8080/api/auth/2fa/verificar -H "Content-Type: application/json" \
+     -d '{"desafio":"eyJ...","codigo":"123456"}'
+# {"etapa":"CONCLUIDO","token":"eyJ...","username":"admin","role":"ADMIN",...}
+
+# 3) usar o token: cadastrar um fornecedor (201 Created) e excluir (204 No Content)
+TOKEN="eyJ..."
+curl -s -X POST http://localhost:8080/api/fornecedores -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" -d '{"nome":"Aço Sul","tipo":"FORNECEDOR","telefone":"(49) 3246-1000"}'
+curl -s -o /dev/null -w "%{http_code}\n" -X DELETE http://localhost:8080/api/fornecedores/5 -H "Authorization: Bearer $TOKEN"
+```
 
 | Módulo | Rotas principais | Permissão |
 |--------|------------------|-----------|
@@ -357,8 +392,8 @@ Todas as rotas começam com `/api` e, exceto as do login, exigem o token de aces
 | Movimentações | `GET /movimentacoes`, `POST /movimentacoes/entrada`, `/entrada/lote`, `/saida` | Movimentações |
 | Fornecedores | `GET/POST /fornecedores`, `PUT/DELETE /fornecedores/{id}`, `GET /fornecedores/produtos`, `PUT /fornecedores/{id}/produtos` | Fornecedores |
 | Projetos | `GET /projetos/progresso`, `/projetos/calendario`, `POST /projetos`, `PUT/DELETE /projetos/{id}` (com `senhaAdmin` no corpo), `GET /projetos/{id}/anexos/{anexoId}`, `POST /projetos/{id}/anexos`, `DELETE /projetos/{id}/anexos/{anexoId}`, `PATCH /projetos/{id}/status`, `POST /projetos/{id}/enviar-pedido`, `POST /projetos/{id}/entregar` | Progresso |
-| Modelos | `GET/POST /modelos-projeto`, `DELETE /modelos-projeto/{id}` | Progresso |
-| Financeiro | `GET /financeiro/resumo`, `/pecas`, `/projetos`; `GET/POST /vendas`, `POST /vendas/{id}/fechar` | Financeiro |
+| Modelos | `GET/POST /modelos-projeto`, `GET/PUT/DELETE /modelos-projeto/{id}` | Progresso |
+| Financeiro | `GET /financeiro/resumo`, `/pecas`, `/projetos`; `GET/POST /vendas`, `GET/PUT/DELETE /vendas/{id}`, `POST /vendas/{id}/fechar` | Financeiro |
 | Mensagens | `GET /mensagens/contatos`, `/nao-lidas`, `GET/POST /mensagens/conversa/{usuarioId}`, `GET /mensagens/{id}/imagem` | conta logada |
 | Usuários | `GET/POST /usuarios`, `PUT/DELETE /usuarios/{id}`, `POST /usuarios/{id}/redefinir-2fa` (admin); `GET /seguranca/eventos` (admin) | Administrador ou "Usuários" |
 
@@ -381,8 +416,10 @@ console em `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:smartstock`
 | `app.armazenamento` | `supabase` (padrão) ou `local` (perfil `h2`: arquivos em `backend/armazenamento-local`) |
 | `spring.servlet.multipart.max-file-size` | Tamanho máximo de cada arquivo enviado (20 MB; imagens de itens e conversas seguem limitadas a 5 MB) |
 
-**Frontend** – o endereço da API (`http://localhost:8080`) aparece em `src/api/client.js`, `src/utils/format.js` e
-`src/pages/Pastilhas.jsx`. Se o backend rodar em outro endereço, altere nesses três lugares.
+**Frontend** – o frontend chama a API sempre no **mesmo endereço do site** (`/api/...`). No computador, o Vite repassa
+essas chamadas para `http://localhost:8080` (veja `frontend/vite.config.js`); no servidor, quem repassa é o Nginx. Se o
+backend estiver em outro endereço, defina `VITE_API_URL` (ex.: `https://api.exemplo.com/api`) num arquivo
+`frontend/.env` antes do `npm run build`, ou `SMARTSTOCK_BACKEND` ao rodar o `npm run dev`.
 
 **Dados de exemplo:** são criados pelo `DataSeeder` na inicialização e simulam o estoque de uma metalúrgica. As fotos
 estão em `backend/src/main/resources/seed-images/` e são de uso livre (Wikimedia Commons); autor e licença de cada uma
@@ -411,12 +448,14 @@ estão em [CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
 | `O Supabase recusou a chave SUPABASE_SERVICE_KEY` | A chave no `.env` está errada ou é a *publishable*. Use a **secret** (`sb_secret_...`) de *Project Settings › API Keys*. |
 | Fotos dos itens não aparecem | Confira se o backend iniciou sem erros (ele prepara o Storage ao iniciar) e se há internet. |
 | Sessão perdida ao abrir outra aba | O login é por aba (de propósito). Entre de novo na aba nova. |
+| `Validate failed: Migrations have failed validation` | Um arquivo de migration que já rodou foi alterado. Desfaça a alteração e crie um arquivo novo (`V3__...`). |
+| `Schema-validation: missing column` | O banco está atrás do código: confira se as migrations rodaram (tabela `flyway_schema_history` no schema `smartstock`). |
+| `/swagger-ui.html` dá 404 | O backend é de uma versão antiga: gere de novo com `.\mvnw.cmd clean package -DskipTests`. |
 
 ## 13. Próximos passos e créditos
 
 **Próximos passos sugeridos**
-- Publicar o backend (Java) e o frontend num serviço de hospedagem, **sempre com HTTPS**, para o sistema funcionar fora do
-  `localhost` (ajuste `CORS_ORIGENS` para o endereço público do frontend).
+- Registrar um domínio para o servidor da AWS e ativar o HTTPS com o certbot (veja a [seção 14](#14-publicando-na-aws-ec2)).
 - Relatórios de consumo por período (a estrutura de movimentações já suporta consultas por data).
 - Integração futura com ERP/compras e renomear "Pastilhas" para algo mais geral (ex.: *Materiais*).
 
@@ -424,3 +463,29 @@ estão em [CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
 Projeto Aplicado III – SENAI/SC, Fraiburgo – desenvolvido por **Renan Jussiani** para a DDA Metalúrgica.
 As fotos de exemplo pertencem aos respectivos autores, listados em
 [CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
+
+## 14. Publicando na AWS (EC2)
+
+O passo a passo completo, para quem nunca usou a AWS, está em
+**[docs/implantacao-aws-ec2.md](docs/implantacao-aws-ec2.md)**. Em resumo:
+
+```
+ Internet ──▶ Elastic IP ──▶ Security Group (só 22 do seu IP, 80 e 443) ──▶ EC2 Ubuntu
+                                                                            ├─ Nginx: telas do frontend + repassa /api
+                                                                            └─ backend (systemd) em 127.0.0.1:8080
+                                                                                   └──▶ Supabase (banco + arquivos)
+```
+
+1. Criar a instância EC2 (Ubuntu 24.04, `t3.micro`), com um par de chaves SSH (`.pem`) e um Security Group que libera a
+   porta **22 só para o seu IP** e as portas **80/443** para todos (a **8080 fica fechada**).
+2. Associar um **Elastic IP** (endereço fixo) à instância.
+3. Entrar por SSH, copiar a pasta `deploy` e rodar `bash deploy/instalar-ec2.sh` (Java 21, Nginx, serviço, firewall).
+4. Preencher `/opt/smartstock/.env` no servidor (mesmas chaves do `backend/.env`, mais `CORS_ORIGENS`).
+5. No seu computador: `.\deploy\publicar.ps1 -Servidor SEU_ELASTIC_IP -Chave caminho\da\chave.pem`.
+6. Com um domínio apontando para o Elastic IP: `sudo certbot --nginx -d seu-dominio` para ativar o HTTPS.
+
+## 15. Documentação do projeto (relatório)
+
+A pasta [docs/](docs/README.md) reúne o material do relatório: descrição comercial, requisitos funcionais e não
+funcionais, casos de uso, diagramas (arquitetura, banco de dados, sequência do login, estados do projeto) e o guia de
+implantação na AWS.

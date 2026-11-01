@@ -3,6 +3,9 @@ package com.smartstock.backend.dto;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
+/**
+ * <b>Em palavras simples:</b> Formato dos dados de uma entrada ou saída de estoque: item, quantidade e, na entrada, o fornecedor.
+ */
 public class MovimentacaoRequest {
 
     @NotNull

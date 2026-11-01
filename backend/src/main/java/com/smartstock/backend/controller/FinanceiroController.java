@@ -12,6 +12,10 @@ import com.smartstock.backend.dto.FinanceiroDtos.ProjetoFinanceiro;
 import com.smartstock.backend.dto.FinanceiroDtos.Resumo;
 import com.smartstock.backend.service.FinanceiroService;
 
+/**
+ * <b>Em palavras simples:</b> Rotas do Financeiro (/api/financeiro/...): resumo de valores, preço de cada item por fornecedor
+ * e custo/margem de cada projeto. Só para contas com a aba Financeiro.
+ */
 @RestController
 @RequestMapping("/api/financeiro")
 @PreAuthorize("hasAuthority('PERM_FINANCEIRO')")

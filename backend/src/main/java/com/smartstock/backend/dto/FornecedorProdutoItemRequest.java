@@ -5,6 +5,9 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * <b>Em palavras simples:</b> Formato de uma linha "item + preço" na lista do que um fornecedor vende.
+ */
 public class FornecedorProdutoItemRequest {
 
     @NotNull

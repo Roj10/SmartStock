@@ -10,6 +10,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+/**
+ * <b>Em palavras simples:</b> Tabela pastilhas: os itens de estoque (chapas, tubos, tintas, eletrodos...). Guarda código único,
+ * descrição, fabricante, estoque mínimo (abaixo dele vira alerta), quantidade atual e endereço da foto.
+ */
 @Entity
 @Table(name = "pastilhas")
 public class Pastilha {

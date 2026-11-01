@@ -1,3 +1,7 @@
+/*
+ * Em palavras simples: "Porteiro" das telas: se ninguém está logado, manda para o login; se a conta não tem a aba pedida,
+ * mostra "Acesso restrito" em vez da página.
+ */
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 

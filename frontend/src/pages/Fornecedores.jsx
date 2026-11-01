@@ -1,3 +1,6 @@
+/*
+ * Em palavras simples: Tela Fornecedores: cadastro de fabricantes e fornecedores e a tabela de itens e preços de cada um.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';

@@ -20,6 +20,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
+/**
+ * <b>Em palavras simples:</b> Tabela usuarios: as contas de acesso. Guarda nome, usuário, a senha (só o "hash", uma versão
+ * embaralhada que não dá para desfazer), o perfil, as abas permitidas e os dados do 2FA (segredo cifrado,
+ * códigos de recuperação) e a "versão do token", que permite encerrar todas as sessões da conta de uma vez.
+ */
 @Entity
 @Table(name = "usuarios")
 public class Usuario {

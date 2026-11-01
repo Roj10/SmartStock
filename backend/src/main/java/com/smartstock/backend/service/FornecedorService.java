@@ -22,6 +22,10 @@ import com.smartstock.backend.repository.FornecedorProdutoRepository;
 import com.smartstock.backend.repository.FornecedorRepository;
 import com.smartstock.backend.repository.PastilhaRepository;
 
+/**
+ * <b>Em palavras simples:</b> Regras de Fornecedores: cadastro, edição, exclusão (bloqueada se o fornecedor estiver em uso) e a
+ * lista de itens/preços que cada um vende.
+ */
 @Service
 public class FornecedorService {
 

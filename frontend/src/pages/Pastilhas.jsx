@@ -1,18 +1,16 @@
+/*
+ * Em palavras simples: Tela Estoque: lista dos itens com foto, barra de nível do estoque e alerta de estoque baixo;
+ * cadastro, edição, exclusão e troca de foto. (No código os itens se chamam "pastilhas".)
+ */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api/client';
 import ImagemDropzone from '../components/ImagemDropzone';
 import Modal from '../components/Modal';
 import VisualizadorImagem from '../components/VisualizadorImagem';
+import { urlImagem } from '../utils/format';
 
-const API_ORIGIN = 'http://localhost:8080';
 const EMPTY_FORM = { codigo: '', descricao: '', fabricanteId: '', estoqueMinimo: 0, quantidadeAtual: 0 };
 const PALAVRAS_GALERIA = ['imagem', 'imagens'];
-
-function urlImagem(imagemUrl) {
-  if (!imagemUrl) return null;
-  // fotos no Supabase Storage já vêm com o endereço completo
-  return /^https?:\/\//.test(imagemUrl) ? imagemUrl : `${API_ORIGIN}${imagemUrl}`;
-}
 
 // Barra de estoque: mostra a quantidade atual em relação ao dobro do mínimo (cheia = folga confortável).
 function percentualEstoque(p) {

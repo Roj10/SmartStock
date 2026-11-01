@@ -6,6 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.smartstock.backend.model.Venda;
 
+/**
+ * <b>Em palavras simples:</b> Acesso à tabela de vendas e planos.
+ */
 public interface VendaRepository extends JpaRepository<Venda, Long> {
 
     List<Venda> findAllByOrderByDataCriacaoDescIdDesc();

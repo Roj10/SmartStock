@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 
 import com.smartstock.backend.model.Movimentacao;
 
+/**
+ * <b>Em palavras simples:</b> Acesso à tabela de movimentações (histórico geral, por item e as mais recentes para o painel).
+ */
 public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long> {
 
     List<Movimentacao> findAllByOrderByDataHoraDesc();

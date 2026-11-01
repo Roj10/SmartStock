@@ -1,3 +1,7 @@
+/*
+ * Em palavras simples: Lista de arquivos de um projeto (PDF, desenhos, imagens): abrir, baixar, anexar e remover.
+ * Os arquivos são privados: são buscados pela API com o login da pessoa, e não por um link público.
+ */
 import { useRef, useState } from 'react';
 import api from '../api/client';
 

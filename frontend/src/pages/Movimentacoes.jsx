@@ -1,3 +1,7 @@
+/*
+ * Em palavras simples: Tela Movimentações: registrar entradas (inclusive várias de uma vez, numa compra geral) e saídas
+ * de estoque, e consultar o histórico com filtro por item.
+ */
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';

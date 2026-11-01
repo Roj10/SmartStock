@@ -1,3 +1,7 @@
+/*
+ * Em palavras simples: Tela Calendário: pedidos já enviados, organizados pela data, com a meta de entrega de cada um.
+ * Permite ajustar datas e marcar como entregue.
+ */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../api/client';
 

@@ -8,6 +8,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.smartstock.backend.dto.DashboardResponse;
 import com.smartstock.backend.service.DashboardService;
 
+/**
+ * <b>Em palavras simples:</b> Rota do painel inicial (/api/dashboard): números e alertas mostrados na tela de entrada.
+ *
+ * Qualquer conta logada pode chamar; o conteúdo se ajusta às abas que a conta tem permissão de ver.
+ */
 @RestController
 @RequestMapping("/api/dashboard")
 public class DashboardController {

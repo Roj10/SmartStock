@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -26,6 +27,20 @@ import com.smartstock.backend.security.JwtAuthFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * "Portaria" do sistema: decide quem pode entrar em cada endereço da API.
+ *
+ * <p>Como funciona, em linguagem simples:
+ * <ul>
+ *   <li>Toda chamada ao backend passa por aqui antes de chegar ao código que faz o trabalho.</li>
+ *   <li>O login ({@code /api/auth/**}) é aberto: é onde a pessoa prova quem é (senha + código do app).</li>
+ *   <li>Todo o resto exige o "crachá" digital (token JWT) que o login entrega. Sem ele a resposta é 401.</li>
+ *   <li>Com o crachá, cada aba ainda confere a permissão da conta (anotações {@code @PreAuthorize}
+ *       nos controllers). Sem permissão a resposta é 403.</li>
+ *   <li>Também são enviados cabeçalhos que pedem ao navegador para não abrir o sistema dentro de
+ *       outros sites e não vazar endereços (proteções contra golpes comuns na web).</li>
+ * </ul>
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -46,7 +61,34 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
+    /**
+     * Regras só para a documentação da API (Swagger): a página {@code /swagger-ui.html} e o arquivo
+     * {@code /openapi.yaml}. Ficam abertas para leitura (não mostram dados do sistema, só como usar a API);
+     * para testar as rotas pela página continua sendo preciso fazer login e colar o token em "Authorize".
+     * {@code @Order(1)}: é avaliada antes da regra geral abaixo.
+     */
     @Bean
+    @Order(1)
+    public SecurityFilterChain documentacaoApi(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/v3/api-docs", "/openapi.yaml")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .headers(headers -> {
+                    headers.referrerPolicy(r -> r.policy(ReferrerPolicy.NO_REFERRER));
+                    headers.frameOptions(f -> f.deny());
+                    // a página do Swagger precisa carregar os próprios scripts, estilos e imagens
+                    headers.contentSecurityPolicy(c -> c.policyDirectives(
+                            "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+                                    + "script-src 'self'; frame-ancestors 'none'"));
+                });
+        return http.build();
+    }
+
+    /** Regra geral de todas as outras rotas (a API do sistema). */
+    @Bean
+    @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable()) // API sem cookies: o login vai no cabeçalho Authorization

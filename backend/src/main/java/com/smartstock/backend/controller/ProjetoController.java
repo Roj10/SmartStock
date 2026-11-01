@@ -1,14 +1,14 @@
 package com.smartstock.backend.controller;
 
-import java.util.List;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,12 +31,20 @@ import com.smartstock.backend.dto.ProjetoRequest;
 import com.smartstock.backend.dto.SenhaAdminRequest;
 import com.smartstock.backend.dto.StatusProjetoRequest;
 import com.smartstock.backend.model.Projeto;
-import com.smartstock.backend.service.AnexoProjetoService;
 import com.smartstock.backend.service.AnexoProjetoService.ArquivoAnexo;
+import com.smartstock.backend.service.AnexoProjetoService;
 import com.smartstock.backend.service.ProjetoService;
 
 import jakarta.validation.Valid;
 
+/**
+ * <b>Em palavras simples:</b> Rotas dos Projetos (/api/projetos/...): as ordens de produção da aba Progresso e os pedidos da
+ * aba Calendário.
+ *
+ * Aqui o projeto é criado (com ou sem arquivos anexados), avança pelas etapas da produção, é enviado
+ * ao cliente (o que dá baixa no estoque) e marcado como entregue. Editar, excluir e mexer nos arquivos
+ * exige a senha de um administrador.
+ */
 @RestController
 @RequestMapping("/api/projetos")
 @PreAuthorize("hasAuthority('PERM_PROJETOS')")
@@ -65,18 +74,21 @@ public class ProjetoController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
     public Projeto criar(@Valid @RequestBody ProjetoRequest request) {
         return projetoService.criar(request, List.of());
     }
 
     /** Novo projeto com arquivos anexados: "dados" (JSON do projeto) + "arquivos" (opcional, vários). */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
     public Projeto criarComAnexos(@Valid @RequestPart("dados") ProjetoRequest request,
             @RequestPart(value = "arquivos", required = false) List<MultipartFile> arquivos) {
         return projetoService.criar(request, arquivos);
     }
 
     @PostMapping(value = "/{id}/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
     public Projeto adicionarAnexos(@PathVariable Long id, @RequestPart("arquivos") List<MultipartFile> arquivos,
             @RequestParam(value = "senhaAdmin", required = false) String senhaAdmin) {
         return projetoService.adicionarAnexos(id, arquivos, senhaAdmin);
@@ -133,6 +145,7 @@ public class ProjetoController {
     }
 
     @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void excluir(@PathVariable Long id, @RequestBody(required = false) SenhaAdminRequest request) {
         projetoService.excluir(id, request != null ? request.getSenhaAdmin() : null);
     }

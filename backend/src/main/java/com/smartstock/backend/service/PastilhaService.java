@@ -20,6 +20,10 @@ import com.smartstock.backend.repository.PastilhaRepository;
 import com.smartstock.backend.storage.Armazenamento;
 import com.smartstock.backend.storage.TipoArquivo;
 
+/**
+ * <b>Em palavras simples:</b> Regras dos itens de estoque: cadastro com código único, edição, exclusão (bloqueada se o item tiver
+ * histórico), lista de alertas (quantidade ≤ mínimo) e troca da foto (guardada no Supabase Storage).
+ */
 @Service
 public class PastilhaService {
 

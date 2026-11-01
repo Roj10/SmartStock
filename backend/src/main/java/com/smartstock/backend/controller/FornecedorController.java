@@ -2,6 +2,7 @@ package com.smartstock.backend.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartstock.backend.dto.FornecedorProdutosRequest;
@@ -20,6 +22,13 @@ import com.smartstock.backend.service.FornecedorService;
 
 import jakarta.validation.Valid;
 
+/**
+ * <b>Em palavras simples:</b> Rotas de Fornecedores (/api/fornecedores/...): cadastrar, listar, editar e excluir fabricantes e
+ * fornecedores, e informar quais itens cada um vende e por qual preço.
+ *
+ * A anotação @PreAuthorize em cada rota é a "trava" de permissão: confere se a conta logada tem a aba
+ * necessária antes de executar. Sem ela, a resposta é 403 (sem permissão).
+ */
 @RestController
 @RequestMapping("/api/fornecedores")
 @PreAuthorize("hasAuthority('PERM_FORNECEDORES') or hasAuthority('PERM_PASTILHAS') or hasAuthority('PERM_MOVIMENTACOES')")
@@ -56,6 +65,7 @@ public class FornecedorController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('PERM_FORNECEDORES')")
+    @ResponseStatus(HttpStatus.CREATED)
     public Fornecedor criar(@Valid @RequestBody FornecedorRequest request) {
         return fornecedorService.criar(request);
     }
@@ -68,6 +78,7 @@ public class FornecedorController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('PERM_FORNECEDORES')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void excluir(@PathVariable Long id) {
         fornecedorService.excluir(id);
     }

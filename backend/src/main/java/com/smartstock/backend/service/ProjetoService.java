@@ -25,6 +25,15 @@ import com.smartstock.backend.repository.PastilhaRepository;
 import com.smartstock.backend.repository.ProjetoRepository;
 import com.smartstock.backend.repository.VendaRepository;
 
+/**
+ * <b>Em palavras simples:</b> Regras dos projetos (ordens de produção), o coração da aba Progresso.
+ *
+ * - Criar: com checklist, materiais e arquivos; começa em AGUARDANDO.
+ * - Etapas: anda uma por vez, para frente ou para trás (AGUARDANDO ↔ EM_PRODUCAO ↔ EM_ESTOQUE ↔ PRONTO_ENTREGA).
+ * - Checklist: só pode ser marcado durante a produção.
+ * - Enviar pedido: dá baixa em TODOS os materiais de uma vez; se faltar um, nada é baixado.
+ * - Editar, excluir e mexer nos arquivos: só com a senha de um administrador.
+ */
 @Service
 public class ProjetoService {
 
@@ -35,6 +44,8 @@ public class ProjetoService {
     private final SenhaAdminService senhaAdminService;
     private final AnexoProjetoService anexoService;
 
+    // "Injeção de dependências": o Spring entrega prontas, pelo construtor, as outras peças que este
+    // serviço usa (acesso ao banco, movimentações, senha do administrador, arquivos). Ninguém precisa criá-las.
     public ProjetoService(ProjetoRepository projetoRepository, PastilhaRepository pastilhaRepository,
             MovimentacaoService movimentacaoService, VendaRepository vendaRepository,
             SenhaAdminService senhaAdminService, AnexoProjetoService anexoService) {
@@ -46,10 +57,12 @@ public class ProjetoService {
         this.anexoService = anexoService;
     }
 
+    /** Projetos ainda em produção (aba Progresso), do mais antigo para o mais novo: quem chegou antes é feito antes. */
     public List<Projeto> listarProgresso() {
         return projetoRepository.findByStatusInOrderByDataCriacaoAscIdAsc(StatusProjeto.ETAPAS_PROGRESSO);
     }
 
+    /** Pedidos já enviados ao cliente e entregues: o que aparece na aba Calendário. */
     public List<Projeto> listarCalendario() {
         return projetoRepository.findByStatusInOrderByDataCriacaoDesc(StatusProjeto.ETAPAS_CALENDARIO);
     }
@@ -68,6 +81,7 @@ public class ProjetoService {
         Projeto projeto = new Projeto();
         projeto.setStatus(StatusProjeto.AGUARDANDO);
         projeto.setDataCriacao(LocalDateTime.now());
+        // confere os arquivos (tipo e tamanho) ANTES de gravar qualquer coisa
         anexoService.validar(projeto, arquivos);
         aplicar(projeto, request);
         projeto = projetoRepository.save(projeto);
@@ -75,6 +89,8 @@ public class ProjetoService {
             anexoService.copiar(projeto, request.getAnexosCopiar());
             anexoService.anexar(projeto, arquivos);
         } catch (RuntimeException e) {
+            // se o envio de algum arquivo falhar, apaga os que já subiram para o Storage; o banco é
+            // desfeito sozinho pelo @Transactional, e assim não sobra "meio projeto"
             anexoService.apagarArquivosDoProjeto(projeto);
             throw e;
         }
@@ -125,10 +141,12 @@ public class ProjetoService {
         if (novoStatus == StatusProjeto.ENTREGUE) {
             throw new BusinessException("Use a ação \"Marcar como entregue\" na aba Calendário para concluir o pedido.");
         }
+        // "ordinal" é a posição da etapa na lista; a diferença tem de ser 1 (vizinha), para frente ou para trás
         if (Math.abs(novoStatus.ordinal() - atual.ordinal()) != 1) {
             throw new BusinessException("A ordem de produção deve ser seguida etapa por etapa.");
         }
 
+        // guarda quando a produção começou e terminou (usado para acompanhar prazos)
         if (novoStatus == StatusProjeto.EM_PRODUCAO && projeto.getDataInicioProducao() == null) {
             projeto.setDataInicioProducao(LocalDateTime.now());
         }
@@ -140,6 +158,11 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    /**
+     * Envia o pedido ao cliente: registra cliente e meta de entrega, dá baixa no estoque de todos os
+     * materiais do projeto e o move para o Calendário. Se faltar algum material, nada muda (a baixa e a
+     * mudança de etapa estão na mesma transação "tudo ou nada").
+     */
     @Transactional
     public Projeto enviarPedido(Long id, EnviarPedidoRequest request) {
         Projeto projeto = buscarPorId(id);
@@ -157,6 +180,7 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    /** Última etapa: o cliente recebeu. Guarda a data da entrega (o pedido fica no histórico). */
     public Projeto marcarComoEntregue(Long id) {
         Projeto projeto = buscarPorId(id);
         if (projeto.getStatus() != StatusProjeto.PEDIDO_ENVIADO) {
@@ -167,6 +191,7 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    /** Ajusta a data do pedido e a meta de entrega no Calendário (não precisa de senha). */
     public Projeto atualizarCalendario(Long id, CalendarioUpdateRequest request) {
         Projeto projeto = buscarPorId(id);
         projeto.setDataPedido(request.getDataPedido());
@@ -174,6 +199,7 @@ public class ProjetoService {
         return projetoRepository.save(projeto);
     }
 
+    /** Marca ou desmarca uma etapa do checklist; só é permitido com o projeto Em produção. */
     public Projeto atualizarChecklistItem(Long projetoId, Long itemId, boolean concluido) {
         Projeto projeto = buscarPorId(projetoId);
         if (projeto.getStatus() != StatusProjeto.EM_PRODUCAO) {
@@ -198,6 +224,10 @@ public class ProjetoService {
         projetoRepository.delete(projeto);
     }
 
+    /**
+     * Copia os dados do formulário para o projeto (usado ao criar e ao editar). O checklist e os materiais
+     * são montados de novo a partir da lista enviada.
+     */
     private void aplicar(Projeto projeto, ProjetoRequest request) {
         projeto.setNome(request.getNome());
         projeto.setDescricao(request.getDescricao());

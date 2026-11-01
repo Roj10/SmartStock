@@ -1,3 +1,6 @@
+/*
+ * Em palavras simples: Seletor de emojis usado na caixa de texto das Mensagens.
+ */
 import { useEffect, useRef, useState } from 'react';
 
 const GRUPOS = [

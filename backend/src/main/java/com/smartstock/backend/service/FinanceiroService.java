@@ -26,6 +26,10 @@ import com.smartstock.backend.repository.PastilhaRepository;
 import com.smartstock.backend.repository.ProjetoRepository;
 import com.smartstock.backend.repository.VendaRepository;
 
+/**
+ * <b>Em palavras simples:</b> Cálculos do Financeiro: valor parado em estoque (quantidade × menor preço entre os fornecedores),
+ * custo de materiais de cada projeto, total de vendas e de planos e a margem (venda − custo).
+ */
 @Service
 @Transactional(readOnly = true)
 public class FinanceiroService {

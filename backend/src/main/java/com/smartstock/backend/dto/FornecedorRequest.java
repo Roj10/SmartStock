@@ -5,6 +5,9 @@ import com.smartstock.backend.model.TipoFornecedor;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * <b>Em palavras simples:</b> Formato dos dados para cadastrar ou editar um fornecedor (nome e tipo são obrigatórios).
+ */
 public class FornecedorRequest {
 
     @NotBlank

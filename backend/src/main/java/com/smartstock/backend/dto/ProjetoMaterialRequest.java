@@ -3,6 +3,9 @@ package com.smartstock.backend.dto;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
+/**
+ * <b>Em palavras simples:</b> Formato de um material usado no projeto: qual item e quantas unidades.
+ */
 public class ProjetoMaterialRequest {
 
     @NotNull

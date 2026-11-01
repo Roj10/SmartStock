@@ -2,6 +2,7 @@ package com.smartstock.backend.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +22,12 @@ import com.smartstock.backend.service.PastilhaService;
 
 import jakarta.validation.Valid;
 
+/**
+ * <b>Em palavras simples:</b> Rotas dos Itens de estoque (/api/pastilhas/...). No código os itens se chamam "pastilhas" porque
+ * o sistema nasceu para controlar pastilhas industriais; hoje vale para qualquer material.
+ *
+ * Permite listar, ver os itens em alerta (estoque baixo), cadastrar, editar, excluir e trocar a foto.
+ */
 @RestController
 @RequestMapping("/api/pastilhas")
 @PreAuthorize("hasAuthority('PERM_PASTILHAS') or hasAuthority('PERM_MOVIMENTACOES') or hasAuthority('PERM_PROJETOS') or hasAuthority('PERM_FORNECEDORES')")
@@ -48,6 +56,7 @@ public class PastilhaController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('PERM_PASTILHAS')")
+    @ResponseStatus(HttpStatus.CREATED)
     public Pastilha criar(@Valid @RequestBody PastilhaRequest request) {
         return pastilhaService.criar(request);
     }
@@ -60,6 +69,7 @@ public class PastilhaController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('PERM_PASTILHAS')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void excluir(@PathVariable Long id) {
         pastilhaService.excluir(id);
     }

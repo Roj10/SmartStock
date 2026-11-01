@@ -5,6 +5,9 @@ import java.util.List;
 import com.smartstock.backend.model.Movimentacao;
 import com.smartstock.backend.model.Pastilha;
 
+/**
+ * <b>Em palavras simples:</b> Formato da resposta do painel inicial: totais, itens com estoque crítico e últimas movimentações.
+ */
 public class DashboardResponse {
 
     private boolean podeVerPastilhas;

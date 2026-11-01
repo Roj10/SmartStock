@@ -4,6 +4,9 @@ import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * <b>Em palavras simples:</b> Formato dos dados para enviar um pedido ao cliente: nome do cliente e data prometida de entrega.
+ */
 public class EnviarPedidoRequest {
 
     @NotBlank(message = "Informe o nome do cliente para enviar o pedido")

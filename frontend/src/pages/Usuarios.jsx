@@ -1,3 +1,7 @@
+/*
+ * Em palavras simples: Tela Usuários (administração): criar e editar contas, escolher as abas de cada uma, ver se o 2FA
+ * está ativo, redefinir o 2FA de quem perdeu o celular e consultar os eventos de segurança.
+ */
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import Modal from '../components/Modal';

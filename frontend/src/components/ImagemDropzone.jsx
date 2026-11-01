@@ -1,3 +1,6 @@
+/*
+ * Em palavras simples: Área para escolher ou arrastar uma imagem (foto do item), com pré-visualização antes de enviar.
+ */
 import { useEffect, useRef, useState } from 'react';
 
 const TIPOS_ACEITOS = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];

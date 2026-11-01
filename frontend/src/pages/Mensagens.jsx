@@ -1,3 +1,7 @@
+/*
+ * Em palavras simples: Tela Mensagens: conversa entre as contas (setores), com envio de texto, emojis e imagens.
+ * A lista de contatos e as mensagens são atualizadas sozinhas de tempos em tempos.
+ */
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import api from '../api/client';
 import EmojiPicker from '../components/EmojiPicker';
