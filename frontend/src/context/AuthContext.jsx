@@ -9,8 +9,9 @@ export function AuthProvider({ children }) {
     return stored ? JSON.parse(stored) : null;
   });
 
-  const login = useCallback(async (username, senha) => {
-    const { data } = await api.post('/auth/login', { username, senha });
+  // O login tem etapas (senha → 2FA → troca de senha, se exigida). Quando o servidor responde CONCLUIDO,
+  // a resposta traz o token de acesso: só então a sessão é guardada.
+  const concluirLogin = useCallback((data) => {
     sessionStorage.setItem('smartstock_token', data.token);
     const userData = {
       username: data.username,
@@ -23,7 +24,13 @@ export function AuthProvider({ children }) {
     return userData;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // encerra a sessão também no servidor (o token deixa de valer, mesmo se alguém o tiver copiado)
+    try {
+      if (sessionStorage.getItem('smartstock_token')) await api.post('/auth/sair');
+    } catch {
+      // sem conexão: a sessão local é apagada mesmo assim
+    }
     sessionStorage.removeItem('smartstock_token');
     sessionStorage.removeItem('smartstock_user');
     setUser(null);
@@ -37,7 +44,7 @@ export function AuthProvider({ children }) {
   );
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isAdmin, hasPermissao }}>
+    <AuthContext.Provider value={{ user, concluirLogin, logout, isAuthenticated: !!user, isAdmin, hasPermissao }}>
       {children}
     </AuthContext.Provider>
   );

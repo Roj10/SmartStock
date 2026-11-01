@@ -21,7 +21,7 @@ public class UsuarioRequest {
      * Obrigatória ao criar um usuário novo; opcional ao editar (informe apenas
      * para redefinir a senha de um usuário existente).
      */
-    @Size(min = 6, message = "A senha deve ter pelo menos 6 caracteres")
+    @Size(min = 8, max = 72, message = "A senha deve ter de 8 a 72 caracteres")
     private String senha;
 
     @NotNull

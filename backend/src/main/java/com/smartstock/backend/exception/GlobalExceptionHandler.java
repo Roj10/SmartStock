@@ -14,6 +14,57 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(NaoAutenticadoException.class)
+    public ResponseEntity<Map<String, Object>> handleNaoAutenticado(NaoAutenticadoException ex) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(MuitasTentativasException.class)
+    public ResponseEntity<Map<String, Object>> handleTentativas(MuitasTentativasException ex) {
+        return build(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAcessoNegado(Exception ex) {
+        return build(HttpStatus.FORBIDDEN, "Você não tem permissão para esta ação.");
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAutenticacao(Exception ex) {
+        return build(HttpStatus.UNAUTHORIZED, "Sessão expirada ou inválida. Entre de novo.");
+    }
+
+    /** Excluir/alterar algo que outros cadastros usam (ex.: fornecedor com itens, item com movimentações). */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleIntegridade(Exception ex) {
+        return build(HttpStatus.CONFLICT, "Não foi possível concluir: este registro está ligado a outros cadastros "
+                + "(movimentações, itens, projetos...).");
+    }
+
+    /**
+     * Qualquer outro erro: erros conhecidos do Spring mantêm o código HTTP; o resto vira 500 com mensagem genérica
+     * (o detalhe vai só para o log do servidor, nunca para quem chamou).
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleGenerico(Exception ex) {
+        if (ex instanceof org.springframework.web.ErrorResponse er) {
+            HttpStatus status = HttpStatus.resolve(er.getStatusCode().value());
+            if (status == null) {
+                status = HttpStatus.BAD_REQUEST;
+            }
+            return build(status, status.is4xxClientError() ? "Requisição inválida (" + status.value() + ")."
+                    : "Erro no servidor. Tente de novo.");
+        }
+        if (ex instanceof org.springframework.http.converter.HttpMessageNotReadableException
+                || ex instanceof org.springframework.web.method.annotation.MethodArgumentTypeMismatchException) {
+            return build(HttpStatus.BAD_REQUEST, "Requisição inválida.");
+        }
+        log.error("Erro inesperado", ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Erro no servidor. Tente de novo.");
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(ResourceNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
@@ -41,7 +92,9 @@ public class GlobalExceptionHandler {
     /** Falha ao ler/gravar arquivos (por exemplo, sem conexão com o Supabase Storage). */
     @ExceptionHandler(java.io.UncheckedIOException.class)
     public ResponseEntity<Map<String, Object>> handleArquivo(java.io.UncheckedIOException ex) {
-        return build(HttpStatus.BAD_GATEWAY, ex.getMessage() != null ? ex.getMessage() : "Falha ao acessar os arquivos.");
+        // o detalhe (resposta do Supabase) fica só no log do servidor
+        log.warn("Falha ao acessar arquivos: {}", ex.getMessage());
+        return build(HttpStatus.BAD_GATEWAY, "Não foi possível acessar os arquivos agora. Tente de novo.");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

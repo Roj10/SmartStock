@@ -37,22 +37,24 @@ public class UsuarioController {
 
     @PostMapping
     public Usuario criar(@Valid @RequestBody UsuarioRequest request, Authentication authentication) {
-        return usuarioService.criar(request, ehAdmin(authentication));
+        return usuarioService.criar(request, authentication.getName());
     }
 
     @PutMapping("/{id}")
     public Usuario atualizar(@PathVariable Long id, @Valid @RequestBody UsuarioRequest request,
             Authentication authentication) {
-        return usuarioService.atualizar(id, request, ehAdmin(authentication));
+        return usuarioService.atualizar(id, request, authentication.getName());
+    }
+
+    /** Desliga o 2FA da conta (ex.: celular perdido); só o administrador. */
+    @PostMapping("/{id}/redefinir-2fa")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Usuario redefinirDoisFatores(@PathVariable Long id, Authentication authentication) {
+        return usuarioService.redefinirDoisFatores(id, authentication.getName());
     }
 
     @DeleteMapping("/{id}")
     public void excluir(@PathVariable Long id, Authentication authentication) {
-        usuarioService.excluir(id, authentication.getName(), ehAdmin(authentication));
-    }
-
-    private boolean ehAdmin(Authentication authentication) {
-        return authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        usuarioService.excluir(id, authentication.getName());
     }
 }

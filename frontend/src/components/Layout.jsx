@@ -92,8 +92,8 @@ export default function Layout() {
     return () => clearTimeout(timer);
   }, [aviso]);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     navigate('/login');
   }
 

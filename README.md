@@ -110,17 +110,25 @@ cd SmartStock
 
 ### 4.2 Terminal 1 – Backend (porta 8080)
 
-**Antes da primeira vez: o arquivo `.env`.** O backend usa duas coisas do Supabase que não ficam no código, porque o
-repositório é público: a **senha do banco** (*Project Settings › Database*) e a **chave secreta** do projeto
-(*Project Settings › API Keys › Secret keys*, começa com `sb_secret_`), usada para guardar fotos e arquivos no Supabase
-Storage. Copie `backend/.env.example` para `backend/.env` e preencha as duas. O `.env` é ignorado pelo git. A conexão com
+**Antes da primeira vez: o arquivo `.env`.** O backend usa três segredos que não ficam no código, porque o repositório
+é público: a **senha do banco** (*Project Settings › Database*), a **chave secreta** do projeto (*Project Settings ›
+API Keys › Secret keys*, começa com `sb_secret_`), usada para guardar fotos e arquivos no Supabase Storage, e o
+**`SMARTSTOCK_SECRET`**, um segredo aleatório do próprio sistema que assina os logins e cifra os dados do 2FA (o
+`.env.example` mostra o comando para gerar). Copie `backend/.env.example` para `backend/.env` e preencha os três. O
+`.env` é ignorado pelo git. A conexão com
 o banco é pelo *Session pooler* (`aws-0-us-east-2.pooler.supabase.com`, usuário `postgres.brlmkluxhgeaavzaojis`).
 
 ```powershell
 cd backend
 copy .env.example .env      # macOS/Linux: cp .env.example .env
-notepad .env                # preencha SUPABASE_DB_PASSWORD e SUPABASE_SERVICE_KEY
+notepad .env                # preencha SUPABASE_DB_PASSWORD, SMARTSTOCK_SECRET e SUPABASE_SERVICE_KEY
 ```
+
+**Recomendado: conexão verificada com o banco.** Baixe o certificado do Supabase em *Database Settings › SSL
+Configuration › Download certificate* e salve como `backend/supabase-ca.crt`. Com ele, o backend usa `verify-full`:
+além de criptografar, confere que do outro lado é mesmo o Supabase. Sem ele, a conexão é só criptografada (o terminal
+avisa). Na mesma tela dá para ligar *Enforce SSL on incoming connections*, para o Supabase recusar conexões sem
+criptografia.
 
 Na primeira execução o backend cria as tabelas (no schema `smartstock`), os buckets do Storage (`pastilhas`, `mensagens`
 e `projetos`) e grava os dados de exemplo. Nas próximas, ele usa o que já está lá: os exemplos não são recriados. Se
@@ -174,7 +182,13 @@ Acesse **http://localhost:5173** e entre com uma das contas da próxima seção.
 
 ## 5. Entrando no sistema
 
-Contas de demonstração, criadas automaticamente:
+O login tem **duas etapas para todas as contas**: a senha e um código de 6 dígitos do **app autenticador** no celular
+(Google Authenticator, Microsoft Authenticator ou Authy). No primeiro login de cada conta o sistema mostra um QR code
+para configurar o app e entrega **8 códigos de recuperação** (cada um vale uma vez, para quando a pessoa estiver sem o
+celular). Quem perder o celular e os códigos pede ao administrador para **Redefinir 2FA** na aba Usuários.
+
+Contas de demonstração, criadas automaticamente (no primeiro login **a troca da senha é obrigatória**: as senhas abaixo
+são públicas e deixam de funcionar):
 
 | Usuário | Senha | Perfil | Abas liberadas |
 |---------|-------|--------|----------------|
@@ -183,7 +197,8 @@ Contas de demonstração, criadas automaticamente:
 | `financeiro` | `financeiro123` | Funcionário | Financeiro e Fornecedores |
 
 A aba **Mensagens** é liberada para todas as contas. As senhas ficam criptografadas no banco (BCrypt) e nunca são
-mostradas: o administrador só pode redefini-las.
+mostradas: o administrador só pode redefini-las, e quem recebe uma senha definida por outra pessoa troca no login.
+Senhas novas precisam ter 8 caracteres ou mais, com letras e números.
 
 > Dica: o login é guardado **por aba do navegador**. Para ver duas contas conversando, abra uma aba para cada conta
 > (ou uma janela anônima).
@@ -235,6 +250,23 @@ Aguardando início → Em produção → Em estoque → Pronto para entrega ─�
 **Acesso e usuários**
 - Login com JWT. O administrador cria contas e define a quais abas cada uma tem acesso. Contas sem permissão recebem
   403 da API e nem veem a aba no menu.
+
+**Segurança**
+- **2FA obrigatório** (TOTP, padrão dos apps autenticadores) com QR code gerado pelo próprio backend, códigos de
+  recuperação de uso único e proteção contra reuso do mesmo código. O segredo de cada conta fica **cifrado** no banco
+  (AES-256-GCM) com a chave do servidor.
+- **Login em etapas** com tokens curtos (5 min) entre uma etapa e outra: o token de acesso só sai depois da senha, do
+  2FA e da troca de senha (quando exigida). O login vale 8 horas; **Sair** derruba todas as sessões da conta, e trocar a
+  senha ou redefinir o 2FA também.
+- **Limite de tentativas**: 5 erros seguidos de senha, de código do 2FA ou da senha do administrador bloqueiam aquela
+  conta por 15 minutos.
+- Quem tem só a aba Usuários **não pode** aumentar as próprias permissões nem dar a outros abas que não tem.
+- **Eventos de segurança** (logins, falhas, bloqueios, 2FA, senhas, contas, uso da senha do administrador) ficam
+  registrados com data, conta e IP, sem senhas nem códigos; o administrador vê em *Usuários › Eventos de segurança*.
+- **Caminho dos dados**: CORS só para o endereço do frontend; cabeçalhos de segurança (sem `iframe`, sem `Referer`,
+  CSP); erros sem detalhes internos; conexão com o banco por TLS (verificada com o certificado do Supabase);
+  **RLS ligado** em todas as tabelas e nenhum acesso pelas chaves públicas do Supabase (`anon`/`authenticated`);
+  arquivos privados só passam pelo backend.
 
 **Pastilhas (itens de estoque)**
 - Cadastro com código, descrição, fabricante, estoque mínimo, estoque atual (inicial) e imagem.
@@ -314,11 +346,12 @@ SmartStock/
 
 ## 10. API (resumo)
 
-Todas as rotas começam com `/api` e, exceto o login, exigem o token JWT no cabeçalho `Authorization: Bearer ...`.
+Todas as rotas começam com `/api` e, exceto as do login, exigem o token de acesso no cabeçalho
+`Authorization: Bearer ...`.
 
 | Módulo | Rotas principais | Permissão |
 |--------|------------------|-----------|
-| Login | `POST /auth/login` | pública |
+| Login | `POST /auth/login`, `/auth/2fa/configurar`, `/auth/2fa/ativar`, `/auth/2fa/verificar`, `/auth/trocar-senha` (etapas, com o token curto `desafio`); `POST /auth/sair` | pública / conta logada |
 | Painel | `GET /dashboard` | conta logada |
 | Pastilhas | `GET/POST /pastilhas`, `PUT/DELETE /pastilhas/{id}`, `POST/DELETE /pastilhas/{id}/imagem`, `GET /pastilhas/alertas` | leitura: Estoque, Movimentações, Progresso ou Fornecedores; escrita: Estoque |
 | Movimentações | `GET /movimentacoes`, `POST /movimentacoes/entrada`, `/entrada/lote`, `/saida` | Movimentações |
@@ -327,7 +360,7 @@ Todas as rotas começam com `/api` e, exceto o login, exigem o token JWT no cabe
 | Modelos | `GET/POST /modelos-projeto`, `DELETE /modelos-projeto/{id}` | Progresso |
 | Financeiro | `GET /financeiro/resumo`, `/pecas`, `/projetos`; `GET/POST /vendas`, `POST /vendas/{id}/fechar` | Financeiro |
 | Mensagens | `GET /mensagens/contatos`, `/nao-lidas`, `GET/POST /mensagens/conversa/{usuarioId}`, `GET /mensagens/{id}/imagem` | conta logada |
-| Usuários | `GET/POST /usuarios`, `PUT/DELETE /usuarios/{id}` | Administrador ou "Usuários" |
+| Usuários | `GET/POST /usuarios`, `PUT/DELETE /usuarios/{id}`, `POST /usuarios/{id}/redefinir-2fa` (admin); `GET /seguranca/eventos` (admin) | Administrador ou "Usuários" |
 
 Para ver os dados: no Supabase, *Table Editor* (escolha o schema `smartstock`) ou *SQL Editor*. No perfil `h2` existe o
 console em `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:smartstock`, usuário `sa`, senha em branco).
@@ -340,7 +373,10 @@ console em `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:smartstock`
 |-------|----------------|
 | `server.port` | Porta do servidor (padrão 8080) |
 | `spring.datasource.*` | Conexão com o Supabase. A senha vem de `SUPABASE_DB_PASSWORD` (arquivo `backend/.env` ou variável de ambiente); endereço e usuário podem ser trocados com `SUPABASE_DB_URL` e `SUPABASE_DB_USER` |
-| `jwt.secret` / `jwt.expiration-ms` | Chave do token de login e validade (padrão 24 h). **Troque a chave em uso real.** |
+| `app.seguranca.segredo` | Vem de `SMARTSTOCK_SECRET` (`.env`): assina os logins e cifra os segredos do 2FA. Se mudar, todos entram de novo e reconfiguram o 2FA |
+| `jwt.expiration-ms` | Validade do login (padrão 8 h) |
+| `app.cors.origens` | Endereços do frontend que podem chamar a API (`CORS_ORIGENS`; padrão `http://localhost:5173`) |
+| `app.supabase.db-ca` | Certificado do Supabase para a conexão verificada (padrão `supabase-ca.crt`, na pasta `backend`) |
 | `app.supabase.url` / `app.supabase.service-key` | Endereço do projeto e chave secreta para o Supabase Storage (a chave vem de `SUPABASE_SERVICE_KEY`, no `.env`) |
 | `app.armazenamento` | `supabase` (padrão) ou `local` (perfil `h2`: arquivos em `backend/armazenamento-local`) |
 | `spring.servlet.multipart.max-file-size` | Tamanho máximo de cada arquivo enviado (20 MB; imagens de itens e conversas seguem limitadas a 5 MB) |
@@ -366,6 +402,11 @@ estão em [CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
 | `password authentication failed` | Senha errada no `.env`. Confira no Supabase (*Project Settings › Database*) ou redefina a senha lá. Se a senha tiver `\`, escreva `\\`. |
 | `Connection refused`, `timeout` ou `UnknownHost` ao iniciar | Sem internet ou projeto do Supabase pausado (o plano gratuito pausa após dias sem uso: entre no painel e clique em *Restore*). |
 | Dados que eu cadastrei sumiram | Confira se o backend não foi iniciado com o perfil `h2` (banco em memória). |
+| `Defina SMARTSTOCK_SECRET no arquivo backend/.env` | Gere um segredo com o comando do `.env.example` e coloque na linha `SMARTSTOCK_SECRET=` do `.env`. |
+| "Código incorreto" no 2FA com o código certo | Acerte o relógio do celular (data e hora automáticas). O código muda a cada 30 s e cada um só vale uma vez. |
+| Perdi o celular | Use um código de recuperação no login; sem eles, peça ao administrador para **Redefinir 2FA** em *Usuários*. |
+| "Muitas tentativas erradas" | 5 erros seguidos bloqueiam por 15 minutos. Espere ou reinicie o backend. |
+| A tela abre, mas tudo pede login de novo | O login vale 8 h e "Sair" encerra todas as sessões da conta. Entre de novo. |
 | `Could not resolve placeholder 'SUPABASE_SERVICE_KEY'` | Falta a linha `SUPABASE_SERVICE_KEY=...` no `backend/.env` (veja o `.env.example`). |
 | `O Supabase recusou a chave SUPABASE_SERVICE_KEY` | A chave no `.env` está errada ou é a *publishable*. Use a **secret** (`sb_secret_...`) de *Project Settings › API Keys*. |
 | Fotos dos itens não aparecem | Confira se o backend iniciou sem erros (ele prepara o Storage ao iniciar) e se há internet. |
@@ -374,7 +415,8 @@ estão em [CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
 ## 13. Próximos passos e créditos
 
 **Próximos passos sugeridos**
-- Publicar o backend (Java) e o frontend num serviço de hospedagem, para o sistema funcionar fora do `localhost`.
+- Publicar o backend (Java) e o frontend num serviço de hospedagem, **sempre com HTTPS**, para o sistema funcionar fora do
+  `localhost` (ajuste `CORS_ORIGENS` para o endereço público do frontend).
 - Relatórios de consumo por período (a estrutura de movimentações já suporta consultas por data).
 - Integração futura com ERP/compras e renomear "Pastilhas" para algo mais geral (ex.: *Materiais*).
 

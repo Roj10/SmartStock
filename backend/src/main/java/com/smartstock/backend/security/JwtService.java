@@ -1,75 +1,66 @@
 package com.smartstock.backend.security;
 
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.SecretKey;
+import com.smartstock.backend.model.Usuario;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 
+/**
+ * Tokens assinados com a chave do servidor (derivada do SMARTSTOCK_SECRET).
+ * - "acesso": usado nas chamadas da API, depois do login completo (senha + 2FA).
+ * - "setup", "2fa" e "senha": tokens curtos (5 min) que só servem para a etapa seguinte do login.
+ * Todos levam a "versão" da conta: trocar a senha, sair ou redefinir o 2FA derruba os tokens antigos.
+ */
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String secret;
+    public static final String ACESSO = "acesso";
+    public static final String CONFIGURAR_2FA = "setup";
+    public static final String CODIGO_2FA = "2fa";
+    public static final String TROCAR_SENHA = "senha";
 
-    @Value("${jwt.expiration-ms}")
-    private long expirationMs;
+    private static final long DESAFIO_MS = 5 * 60 * 1000;
 
-    public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+    private final Segredos segredos;
+    private final long expiracaoMs;
+
+    public JwtService(Segredos segredos, @Value("${jwt.expiration-ms}") long expiracaoMs) {
+        this.segredos = segredos;
+        this.expiracaoMs = expiracaoMs;
     }
 
-    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expirationMs);
+    public String tokenDeAcesso(Usuario usuario) {
+        return gerar(usuario, ACESSO, expiracaoMs);
+    }
+
+    public String desafio(Usuario usuario, String tipo) {
+        return gerar(usuario, tipo, DESAFIO_MS);
+    }
+
+    private String gerar(Usuario usuario, String tipo, long validadeMs) {
+        Date agora = new Date();
         return Jwts.builder()
-                .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername())
-                .setIssuedAt(now)
-                .setExpiration(expiry)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .subject(usuario.getUsername())
+                .claim("tipo", tipo)
+                .claim("ver", usuario.getTokenVersao())
+                .issuedAt(agora)
+                .expiration(new Date(agora.getTime() + validadeMs))
+                .signWith(segredos.chaveJwt(), Jwts.SIG.HS256)
                 .compact();
     }
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractClaim(token, Claims::getExpiration).before(new Date());
-    }
-
-    private <T> T extractClaim(String token, Function<Claims, T> resolver) {
-        Claims claims = extractAllClaims(token);
-        return resolver.apply(claims);
-    }
-
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secret);
-        return Keys.hmacShaKeyFor(keyBytes);
+    /** Lê e confere a assinatura e a validade; devolve null se o token for inválido ou estiver vencido. */
+    public Claims ler(String token) {
+        try {
+            return Jwts.parser().verifyWith(segredos.chaveJwt()).build().parseSignedClaims(token).getPayload();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
     }
 }

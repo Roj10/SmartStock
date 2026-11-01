@@ -16,6 +16,29 @@ const ROLE_LABEL = { ADMIN: 'Administrador', OPERADOR: 'Funcionário' };
 
 const EMPTY_FORM = { nome: '', username: '', senha: '', role: 'OPERADOR', permissoes: [] };
 
+// Nomes amigáveis dos eventos de segurança (as falhas aparecem em vermelho)
+const EVENTOS = {
+  LOGIN_OK: 'Login concluído',
+  LOGIN_SENHA_OK: 'Senha correta (aguardando 2FA)',
+  LOGIN_FALHA: 'Senha errada',
+  LOGIN_BLOQUEADO: 'Login bloqueado (tentativas)',
+  '2FA_ATIVADO': '2FA ativado',
+  '2FA_FALHA': 'Código 2FA errado',
+  '2FA_BLOQUEADO': '2FA bloqueado (tentativas)',
+  '2FA_RECUPERACAO': 'Código de recuperação usado',
+  '2FA_REDEFINIDO': '2FA redefinido',
+  SENHA_TROCADA: 'Senha trocada',
+  SENHA_REDEFINIDA: 'Senha redefinida',
+  SAIDA: 'Saiu do sistema',
+  SENHA_ADMIN_USADA: 'Senha de admin autorizou ação',
+  SENHA_ADMIN_FALHA: 'Senha de admin errada',
+  SENHA_ADMIN_BLOQUEADA: 'Senha de admin bloqueada',
+  USUARIO_CRIADO: 'Conta criada',
+  USUARIO_EXCLUIDO: 'Conta excluída',
+  PERMISSOES_ALTERADAS: 'Permissões alteradas',
+};
+const ehFalha = (tipo) => /FALHA|BLOQUEAD/.test(tipo);
+
 export default function Usuarios() {
   const { user: usuarioLogado, isAdmin } = useAuth();
   const [lista, setLista] = useState([]);
@@ -26,6 +49,8 @@ export default function Usuarios() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [salvando, setSalvando] = useState(false);
   const [formError, setFormError] = useState('');
+  const [visao, setVisao] = useState('contas');
+  const [eventos, setEventos] = useState([]);
 
   function carregar() {
     setLoading(true);
@@ -37,6 +62,29 @@ export default function Usuarios() {
   }
 
   useEffect(carregar, []);
+
+  function verEventos() {
+    setVisao('eventos');
+    api
+      .get('/seguranca/eventos')
+      .then((res) => setEventos(res.data))
+      .catch(() => setError('Não foi possível carregar os eventos de segurança.'));
+  }
+
+  async function redefinirDoisFatores(u) {
+    if (
+      !window.confirm(
+        `Redefinir o 2FA de "${u.nome}"? Use quando a pessoa perdeu o celular. Ela será desconectada e configurará o app de novo no próximo login.`
+      )
+    )
+      return;
+    try {
+      await api.post(`/usuarios/${u.id}/redefinir-2fa`);
+      carregar();
+    } catch (err) {
+      alert(err.response?.data?.message ?? 'Não foi possível redefinir o 2FA.');
+    }
+  }
 
   function abrirNovo() {
     setEditando(null);
@@ -103,18 +151,76 @@ export default function Usuarios() {
           <h1>Usuários e permissões</h1>
           <p>Crie contas para a equipe e controle a quais abas do sistema cada uma tem acesso.</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirNovo}>
-          + Novo usuário
-        </button>
+        <div className="header-botoes">
+          {isAdmin && (
+            <div className="segmentado" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visao === 'contas'}
+                className={'segmentado-item' + (visao === 'contas' ? ' ativo' : '')}
+                onClick={() => setVisao('contas')}
+              >
+                Contas
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visao === 'eventos'}
+                className={'segmentado-item' + (visao === 'eventos' ? ' ativo' : '')}
+                onClick={verEventos}
+              >
+                Eventos de segurança
+              </button>
+            </div>
+          )}
+          <button className="btn btn-primary" onClick={abrirNovo}>
+            + Novo usuário
+          </button>
+        </div>
       </header>
 
       <div className="alert alert-info">
-        Por segurança, senhas ficam armazenadas de forma criptografada — depois de criada, a senha não pode ser
-        visualizada novamente, apenas redefinida.
+        Toda conta entra com senha e com o código do app autenticador (2FA). Senhas ficam criptografadas e não podem ser
+        vistas, só redefinidas; quem recebe uma senha nova troca no próximo login.
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
 
+      {visao === 'eventos' && (
+        <section className="panel painel-tabela">
+          {eventos.length === 0 ? (
+            <p className="empty-state">Nenhum evento registrado ainda.</p>
+          ) : (
+            <div className="table-scroll rolavel">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Data e hora</th>
+                    <th>Evento</th>
+                    <th>Conta</th>
+                    <th>Detalhe</th>
+                    <th>IP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventos.map((e) => (
+                    <tr key={e.id}>
+                      <td>{new Date(e.dataHora).toLocaleString('pt-BR')}</td>
+                      <td className={ehFalha(e.tipo) ? 'evento-falha' : ''}>{EVENTOS[e.tipo] ?? e.tipo}</td>
+                      <td>{e.usuario ?? '-'}</td>
+                      <td>{e.detalhe ?? ''}</td>
+                      <td className="text-muted">{e.ip ?? ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {visao === 'contas' && (
       <section className="panel painel-tabela">
         {loading ? (
           <p className="empty-state">Carregando...</p>
@@ -129,6 +235,7 @@ export default function Usuarios() {
                   <th>E-mail / usuário</th>
                   <th>Perfil</th>
                   <th>Acesso</th>
+                  <th>2FA</th>
                   <th></th>
                 </tr>
               </thead>
@@ -157,10 +264,24 @@ export default function Usuarios() {
                         <span className="text-muted">Sem acesso a nenhuma aba</span>
                       )}
                     </td>
+                    <td>
+                      <span
+                        className={`badge ${u.doisFatoresAtivo ? 'badge-2fa-ok' : 'badge-2fa-pendente'}`}
+                        title={u.doisFatoresAtivo ? 'App autenticador configurado' : 'A pessoa configura o app no próximo login'}
+                      >
+                        {u.doisFatoresAtivo ? 'Ativo' : 'Pendente'}
+                      </span>
+                      {u.trocarSenha && <div className="text-muted">Troca de senha pendente</div>}
+                    </td>
                     <td className="table-actions">
                       <button className="btn-link" onClick={() => abrirEdicao(u)}>
                         Editar
                       </button>
+                      {isAdmin && u.doisFatoresAtivo && !ehMinhaConta(u) && (
+                        <button className="btn-link" onClick={() => redefinirDoisFatores(u)}>
+                          Redefinir 2FA
+                        </button>
+                      )}
                       {!ehMinhaConta(u) && (
                         <button className="btn-link btn-link-danger" onClick={() => excluir(u)}>
                           Excluir
@@ -174,6 +295,7 @@ export default function Usuarios() {
           </div>
         )}
       </section>
+      )}
 
       {modalAberto && (
         <Modal title={editando ? 'Editar usuário' : 'Novo usuário'} onClose={() => setModalAberto(false)}>
@@ -200,8 +322,11 @@ export default function Usuarios() {
                 onChange={(e) => setForm({ ...form, senha: e.target.value })}
                 placeholder={editando ? 'Deixe em branco para manter a senha atual' : ''}
                 required={!editando}
-                minLength={6}
+                minLength={8}
               />
+              <small className="form-hint">
+                Pelo menos 8 caracteres, com letras e números. A pessoa troca essa senha no primeiro login.
+              </small>
             </label>
             <label>
               Perfil

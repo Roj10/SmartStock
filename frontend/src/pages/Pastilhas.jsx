@@ -152,8 +152,8 @@ export default function Pastilhas() {
     try {
       await api.delete(`/pastilhas/${p.id}`);
       carregar();
-    } catch {
-      alert('Não foi possível excluir. Verifique se há movimentações vinculadas a esta pastilha.');
+    } catch (err) {
+      alert(err.response?.data?.message ?? 'Não foi possível excluir. Verifique se há movimentações vinculadas a esta pastilha.');
     }
   }
 

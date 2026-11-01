@@ -105,8 +105,8 @@ export default function Fornecedores() {
     try {
       await api.delete(`/fornecedores/${f.id}`);
       carregar();
-    } catch {
-      alert('Não foi possível excluir. Verifique se há pastilhas vinculadas a este fornecedor.');
+    } catch (err) {
+      alert(err.response?.data?.message ?? 'Não foi possível excluir. Verifique se há pastilhas vinculadas a este fornecedor.');
     }
   }
 

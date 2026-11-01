@@ -39,6 +39,7 @@ import com.smartstock.backend.repository.UsuarioRepository;
 import com.smartstock.backend.repository.VendaRepository;
 
 @Component
+@org.springframework.core.annotation.Order(1)
 public class DataSeeder implements CommandLineRunner {
 
     private final UsuarioRepository usuarioRepository;
@@ -97,6 +98,7 @@ public class DataSeeder implements CommandLineRunner {
         admin.setSenha(passwordEncoder.encode("admin123"));
         admin.setRole(Role.ADMIN);
         admin.setPermissoes(Set.of(Modulo.values()));
+        admin.setTrocarSenha(true); // senha de exemplo (publicada no README): troca obrigatória no 1º login
         usuarioRepository.save(admin);
 
         // Exemplo de conta com acesso restrito a estoque, movimentações e progresso
@@ -107,6 +109,7 @@ public class DataSeeder implements CommandLineRunner {
         operador.setSenha(passwordEncoder.encode("operador123"));
         operador.setRole(Role.OPERADOR);
         operador.setPermissoes(Set.of(Modulo.PASTILHAS, Modulo.MOVIMENTACOES, Modulo.PROJETOS));
+        operador.setTrocarSenha(true); // senha de exemplo (publicada no README): troca obrigatória no 1º login
         usuarioRepository.save(operador);
 
         // Conta do setor financeiro: compras, valores, vendas e planos.
@@ -116,6 +119,7 @@ public class DataSeeder implements CommandLineRunner {
         financeiro.setSenha(passwordEncoder.encode("financeiro123"));
         financeiro.setRole(Role.OPERADOR);
         financeiro.setPermissoes(Set.of(Modulo.FINANCEIRO, Modulo.FORNECEDORES));
+        financeiro.setTrocarSenha(true); // senha de exemplo (publicada no README): troca obrigatória no 1º login
         usuarioRepository.save(financeiro);
     }
 
