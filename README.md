@@ -1,14 +1,98 @@
 # SmartStock
 
-Sistema web para **controle de estoque, produção e entregas** de uma metalúrgica, criado para o desafio da
-**DDA Metalúrgica** no Projeto Aplicado III (SENAI/SC – Fraiburgo).
+**Gestão de estoque, produção e entregas para metalúrgicas e pequenas indústrias que produzem sob encomenda.**
 
-Com ele a empresa acompanha o estoque de materiais (barras, tubos, tintas, eletrodos, discos, ferragens...), registra
-entradas e saídas, conduz cada pedido por uma **ordem de produção** em etapas, controla as entregas em um calendário,
-vê o lado financeiro (preços por fornecedor, vendas e margem) e conversa entre os setores dentro do próprio sistema.
+Criado para o desafio da **DDA Metalúrgica** no Projeto Aplicado III (SENAI/SC – Fraiburgo), o SmartStock substitui
+planilhas, cadernos e mensagens soltas por um sistema web único, usado pelo navegador (computador, tablet ou celular):
 
-> O sistema foi pensado a partir de "pastilhas industriais", por isso o código e as abas ainda usam o nome
+- **Estoque sob controle** – materiais com foto, estoque mínimo e **alerta automático** antes de faltar.
+- **Toda movimentação registrada** – entradas e saídas com data, fornecedor e quem fez.
+- **Produção visível** – cada pedido vira uma **ordem de produção** com etapas, checklist, materiais e os arquivos do
+  projeto (PDF, desenhos CAD, fotos).
+- **Entregas no prazo** – calendário com a meta de cada pedido; ao enviar, o **estoque é baixado sozinho**.
+- **Financeiro real** – preço por fornecedor, valor parado em estoque, custo de cada projeto, orçamentos, vendas e margem.
+- **Setores conversando** – mensagens internas com imagens, sem depender de WhatsApp pessoal.
+
+> O sistema nasceu para controlar "pastilhas industriais", por isso o código e uma das abas ainda usam o nome
 > *Pastilhas* para os itens de estoque. Os dados de exemplo mostram materiais variados de uma metalúrgica.
+
+## Por que o SmartStock
+
+ERPs de mercado costumam ser genéricos (feitos para comércio e para qualquer tipo de empresa), cheios de módulos que a
+pequena indústria não usa, e as planilhas não têm controle de acesso nem histórico. O SmartStock foi desenhado a partir
+do dia a dia de uma metalúrgica real:
+
+| | Planilhas / caderno | ERP genérico | **SmartStock** |
+|-|---------------------|--------------|----------------|
+| Produção sob encomenda (etapas, checklist, arquivos do projeto) | Não | Em geral, módulo à parte ou adaptação | **Nativo: é o centro do sistema** |
+| Baixa de estoque ao enviar o pedido | Manual | Varia | **Automática e "tudo ou nada"** (se faltar um item, nada é baixado) |
+| Custo do projeto pelo menor preço entre fornecedores | Manual | Varia | **Automático** |
+| Arquivos do projeto (PDF, CAD) junto do pedido | Espalhados | Varia | **Anexados à ordem de produção** |
+| Aprender a usar | — | Treinamento longo | **Poucas abas, em português, pensadas para o chão de fábrica** |
+| Acesso por setor | Não | Sim | **Sim, aba por aba, definido pelo administrador** |
+| Login com 2FA obrigatório | Não | Raramente obrigatório | **Obrigatório para todas as contas** |
+| Infraestrutura | Arquivo no PC | Servidor ou mensalidade alta | **Nuvem (Supabase + AWS), sem servidor na empresa** |
+
+**Outros diferenciais**
+- **Proteção contra erro humano:** editar ou excluir um projeto exige a **senha do administrador**; etapas só avançam
+  uma por vez; exclusões de registros em uso são bloqueadas com explicação.
+- **Modelos de projeto:** um "portão deslizante padrão" vira modelo e um pedido novo parecido sai em segundos.
+- **Código aberto, documentado e explicado:** API com documentação interativa (Swagger), relatório técnico em
+  [`docs/`](docs/README.md) e comentários "em palavras simples" em todos os arquivos.
+
+## Segurança
+
+Segurança foi tratada como requisito, não como detalhe:
+
+| Camada | O que o SmartStock faz |
+|--------|------------------------|
+| **Login** | Senha + **código do app autenticador (2FA)** para todas as contas; QR code no primeiro acesso e 8 códigos de recuperação de uso único |
+| **Senhas** | Guardadas só como *hash* BCrypt (ninguém, nem o administrador, consegue vê-las); política de senha forte; **troca obrigatória** das senhas de exemplo e das definidas pelo administrador |
+| **Ataques de força bruta** | 5 tentativas erradas (senha, 2FA ou senha do administrador) bloqueiam por 15 minutos |
+| **Sessões** | Token JWT assinado, válido por 8 h e **revogável**: "Sair", troca de senha ou redefinição do 2FA derrubam todas as sessões da conta |
+| **Permissões** | Conferidas **no servidor, em cada rota** da API, por perfil e por aba (esconder o menu não basta) |
+| **Dados em trânsito** | HTTPS no servidor público e conexão com o banco por TLS **verificando o certificado** do Supabase |
+| **Dados guardados** | Segredos do 2FA cifrados (AES-256-GCM); banco fechado para a API pública do Supabase (RLS); fotos de conversas e arquivos de projetos em armazenamento **privado** |
+| **Arquivos enviados** | Tipo conferido pelo conteúdo (não só pela extensão) e tamanho limitado |
+| **Segredos** | Nenhuma senha ou chave no código: tudo no `.env`, fora do Git |
+| **Auditoria** | Registro de eventos de segurança (logins, falhas, bloqueios, 2FA, trocas de senha) com data, conta e IP, visível ao administrador |
+| **Navegador e servidor** | Cabeçalhos de proteção (CSP, anti-clickjacking), erros sem detalhes internos, backend escondido atrás do Nginx |
+
+## Tecnologias
+
+**Frontend** React 19 + Vite · **Backend** Java 21 + Spring Boot 3.5 (Spring Security, JWT, JPA) · **Banco**
+PostgreSQL no Supabase, versionado com Flyway · **Arquivos** Supabase Storage · **API** REST documentada com
+OpenAPI/Swagger · **Publicação** AWS EC2 + Nginx + systemd.
+
+## Rodando em 5 passos
+
+Precisa de **Java 21**, **Node.js 20.19+** e **Git** (instalação no [passo 3](#3-instalando-as-ferramentas)).
+
+```powershell
+# 1) baixar
+git clone https://github.com/Roj10/SmartStock.git
+cd SmartStock
+
+# 2) segredos: copie o modelo e preencha as 3 linhas (detalhes no passo 4.2)
+copy backend\.env.example backend\.env
+notepad backend\.env
+
+# 3) backend (terminal 1) – espere "Started BackendApplication"
+cd backend
+.\mvnw.cmd clean package -DskipTests
+java -jar target\backend-0.0.1-SNAPSHOT.jar
+
+# 4) frontend (terminal 2, aberto na pasta SmartStock)
+cd frontend
+npm install
+npm run dev
+```
+
+5) Abra **http://localhost:5173** e entre. Num banco novo, use `admin` / `admin123`: o sistema pede para configurar o
+app autenticador e trocar a senha. Num banco já usado, entre com a sua senha e o código do app. A documentação da API fica em **http://localhost:8080/swagger-ui.html**.
+
+Sem internet ou só para experimentar, sem `.env`: `java -jar target\backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=h2`
+(banco em memória, volta aos dados de exemplo a cada reinício).
 
 ## Sumário
 
@@ -132,7 +216,7 @@ além de criptografar, confere que do outro lado é mesmo o Supabase. Sem ele, a
 avisa). Na mesma tela dá para ligar *Enforce SSL on incoming connections*, para o Supabase recusar conexões sem
 criptografia.
 
-Na primeira execução o backend cria as tabelas (no schema `smartstock`), os buckets do Storage (`pastilhas`, `mensagens`
+Na primeira execução o backend cria as tabelas (no schema `smartstock`, pelas migrations do Flyway), os buckets do Storage (`pastilhas`, `mensagens`
 e `projetos`) e grava os dados de exemplo. Nas próximas, ele usa o que já está lá: os exemplos não são recriados. Se
 ainda houver arquivos de versões antigas nas pastas `backend/uploads` e `backend/uploads-privado`, eles são enviados
 ao Storage e apagados do computador (só depois de enviados com sucesso).
