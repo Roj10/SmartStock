@@ -24,7 +24,7 @@ O **SmartStock** é um sistema web, usado pelo navegador (computador, tablet ou 
 | **Calendário** | Pedidos enviados com data prometida de entrega; ao enviar, o estoque é baixado sozinho |
 | **Financeiro** | Valor parado em estoque, custo de cada projeto pelo menor preço, planos (orçamentos) e vendas, margem |
 | **Mensagens** | Conversa interna entre os setores, com envio de imagens |
-| **Usuários e segurança** | Uma conta por setor, cada uma só com as abas que precisa; login com app autenticador (2FA) |
+| **Usuários e segurança** | Uma conta por setor, cada uma só com as abas que precisa; login com código enviado por e-mail (2FA), sem instalar nada |
 
 ## Para quem é
 
@@ -40,7 +40,7 @@ O **SmartStock** é um sistema web, usado pelo navegador (computador, tablet ou 
 - **Prazo sob controle:** quadro de produção e calendário de entregas com a meta de cada pedido.
 - **Tudo do projeto num lugar só:** desenhos, PDFs e fotos anexados ao pedido certo.
 - **Rastreabilidade:** cada movimentação e cada evento de segurança registrados com data e responsável.
-- **Segurança de nível bancário:** senha + código do celular (2FA), senhas fortes obrigatórias, bloqueio após
+- **Segurança de nível bancário:** senha + código enviado por e-mail (2FA), senhas fortes obrigatórias, bloqueio após
   tentativas erradas, dados criptografados no tráfego e arquivos privados.
 
 ## Diferenciais

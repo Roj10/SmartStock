@@ -7,9 +7,9 @@ info:
   description: 'API do SmartStock: estoque, produção, entregas, financeiro e mensagens de uma metalúrgica.
 
 
-    **Como usar aqui:** 1) `POST /api/auth/login` com usuário e senha; 2) siga a etapa indicada em `etapa` (2FA com o código
-    do app; troca de senha, se pedida); 3) copie o `token` da resposta final, clique em **Authorize** e cole. As outras rotas
-    passam a funcionar com as permissões da sua conta.
+    **Como usar aqui:** 1) `POST /api/auth/login` com usuário e senha; 2) siga a etapa indicada em `etapa` (código de 6 dígitos
+    enviado por e-mail; troca de senha, se pedida); 3) copie o `token` da resposta final, clique em **Authorize** e cole.
+    As outras rotas passam a funcionar com as permissões da sua conta.
 
 
     Todas as respostas de erro têm o formato `{status, message, timestamp}`. Os exemplos desta página são respostas reais
@@ -19,8 +19,8 @@ servers:
   description: Este servidor
 tags:
 - name: Autenticação
-  description: 'Login em etapas: senha → 2FA (app autenticador) → troca de senha, quando exigida. Só a última etapa entrega
-    o token de acesso.'
+  description: 'Login em etapas: senha → código enviado por e-mail (2FA) → troca de senha, quando exigida. Só a última etapa
+    entrega o token de acesso.'
 - name: Painel
   description: Resumo da tela inicial (mostra só o que a conta pode ver).
 - name: Itens de estoque
@@ -41,7 +41,7 @@ tags:
 - name: Mensagens
   description: Conversa entre as contas (setores), com texto e imagens privadas.
 - name: Usuários
-  description: Contas, perfis e permissões por aba; redefinição do 2FA.
+  description: Contas, perfis, permissões por aba e e-mail do 2FA; redefinição do 2FA.
 - name: Segurança
   description: Registro de eventos de segurança (logins, falhas, bloqueios, 2FA, senhas).
 security:
@@ -52,8 +52,10 @@ paths:
       tags:
       - Autenticação
       summary: 'Etapa 1: usuário e senha'
-      description: 'Confere a senha e devolve a próxima etapa (CONFIGURAR_2FA na primeira vez, senão CODIGO_2FA) com um `desafio`
-        (token curto, 5 min) para usar nela. Nunca devolve o token de acesso aqui.
+      description: 'Confere a senha. Se a conta já tem e-mail, envia na hora um código de 6 dígitos para ele e devolve a etapa
+        CODIGO_EMAIL (com o e-mail mascarado); se ainda não tem, devolve CADASTRAR_EMAIL. Junto vem um `desafio` (token curto,
+        10 min) para usar na etapa seguinte. Nunca devolve o token de acesso aqui. Se o servidor estiver sem e-mail configurado,
+        `modoTeste` vem true e o código aparece no terminal do backend.
 
 
         **Quem pode:** Pública.'
@@ -71,27 +73,28 @@ paths:
           content:
             application/json:
               example:
-                etapa: CONFIGURAR_2FA
-                desafio: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiI...(token JWT)
+                etapa: CODIGO_EMAIL
+                desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+                nome: Administrador
                 token: null
                 username: null
-                nome: Administrador
                 role: null
                 permissoes: null
-                codigosRecuperacao: null
+                modoTeste: false
+                emailMascarado: re*********@gmail.com
         '400':
           $ref: '#/components/responses/Erro400'
         '401':
           $ref: '#/components/responses/Erro401'
         '429':
           $ref: '#/components/responses/Erro429'
-  /api/auth/2fa/configurar:
+  /api/auth/email/cadastrar:
     post:
       tags:
       - Autenticação
-      summary: 'Etapa 2 (1ª vez): gerar o QR code do app autenticador'
-      description: 'Gera o segredo do 2FA e devolve o QR code (imagem PNG) e a chave para digitar no app, se a câmera não
-        funcionar.
+      summary: 'Etapa 2 (1ª vez): informar o e-mail que recebe os códigos'
+      description: 'Só para contas ainda sem e-mail. Guarda o e-mail como pendente e envia um código para ele; o e-mail só
+        passa a valer depois que o código for digitado em /email/verificar. Um envio a cada 60 s.
 
 
         **Quem pode:** Pública (exige o `desafio` da etapa 1).'
@@ -102,64 +105,36 @@ paths:
           application/json:
             example:
               desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+              email: renan@gmail.com
       responses:
         '200':
           description: OK.
           content:
             application/json:
               example:
-                qrCode: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAVYAAAFWAQAAAA...(imagem PNG do QR code)
-                chave: 3DER TI2F ORYU R6DY ST7W WEVV JPFJ PLS7
-                conta: admin
-        '401':
-          $ref: '#/components/responses/Erro401'
-  /api/auth/2fa/ativar:
-    post:
-      tags:
-      - Autenticação
-      summary: 'Etapa 2 (1ª vez): confirmar o primeiro código e ativar o 2FA'
-      description: 'Confere o código de 6 dígitos do app. Devolve os 8 códigos de recuperação (mostrados uma única vez) e
-        a próxima etapa.
-
-
-        **Quem pode:** Pública (exige o `desafio`).'
-      security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            example:
-              desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
-              codigo: '123456'
-      responses:
-        '200':
-          description: OK.
-          content:
-            application/json:
-              example:
-                etapa: TROCAR_SENHA
-                desafio: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiI...(token JWT)
+                etapa: CODIGO_EMAIL
+                desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+                nome: Administrador
                 token: null
                 username: null
-                nome: Administrador
                 role: null
                 permissoes: null
-                codigosRecuperacao:
-                - xtpk-ak74
-                - whhk-2ux8
+                modoTeste: false
+                emailMascarado: re***@gmail.com
+        '400':
+          $ref: '#/components/responses/Erro400'
         '401':
           $ref: '#/components/responses/Erro401'
         '422':
           $ref: '#/components/responses/Erro422'
-        '429':
-          $ref: '#/components/responses/Erro429'
-  /api/auth/2fa/verificar:
+  /api/auth/email/verificar:
     post:
       tags:
       - Autenticação
-      summary: 'Etapa 2: código do app (ou código de recuperação)'
-      description: 'Aceita o código de 6 dígitos do app (cada um vale uma vez) ou um código de recuperação (formato xxxx-xxxx,
-        uso único). Se a conta não precisar trocar a senha, já devolve o token de acesso.
+      summary: 'Etapa 2: código de 6 dígitos que chegou por e-mail'
+      description: 'Confere o código (vale 10 min e uma única vez). 5 erros cancelam o código e bloqueiam novas tentativas
+        por 15 min. Na primeira vez, confirma o e-mail informado. Se a conta não precisar trocar a senha, já devolve o token
+        de acesso.
 
 
         **Quem pode:** Pública (exige o `desafio`).'
@@ -179,20 +154,61 @@ paths:
               example:
                 etapa: CONCLUIDO
                 desafio: null
-                token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiI...(token JWT)
+                token: eyJhbGciOiJIUzI1NiJ9...(token JWT)
                 username: admin
                 nome: Administrador
                 role: ADMIN
                 permissoes:
                 - PASTILHAS
+                - MOVIMENTACOES
+                - PROJETOS
                 - FORNECEDORES
-                codigosRecuperacao: null
+                - FINANCEIRO
+                - USUARIOS
+                emailMascarado: null
+                modoTeste: false
         '401':
           $ref: '#/components/responses/Erro401'
         '422':
           $ref: '#/components/responses/Erro422'
         '429':
           $ref: '#/components/responses/Erro429'
+  /api/auth/email/reenviar:
+    post:
+      tags:
+      - Autenticação
+      summary: Enviar outro código
+      description: 'Envia um código novo para o e-mail da etapa atual; o anterior deixa de valer. No máximo um envio a cada
+        60 segundos (422 com o tempo que falta).
+
+
+        **Quem pode:** Pública (exige o `desafio`).'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                etapa: CODIGO_EMAIL
+                desafio: eyJhbGciOiJIUzI1NiJ9...(desafio)
+                nome: Administrador
+                token: null
+                username: null
+                role: null
+                permissoes: null
+                modoTeste: false
+                emailMascarado: re*********@gmail.com
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '422':
+          $ref: '#/components/responses/Erro422'
   /api/auth/trocar-senha:
     post:
       tags:
@@ -226,7 +242,8 @@ paths:
                 permissoes:
                 - PASTILHAS
                 - FORNECEDORES
-                codigosRecuperacao: null
+                emailMascarado: null
+                modoTeste: false
         '401':
           $ref: '#/components/responses/Erro401'
         '422':
@@ -3320,6 +3337,7 @@ paths:
                 - PASTILHAS
                 doisFatoresAtivo: true
                 trocarSenha: false
+                email: renan@gmail.com
               - id: 2
                 nome: Operador de Estoque
                 username: operador
@@ -3329,6 +3347,7 @@ paths:
                 - PASTILHAS
                 doisFatoresAtivo: false
                 trocarSenha: true
+                email: null
         '401':
           $ref: '#/components/responses/Erro401'
         '403':
@@ -3337,8 +3356,8 @@ paths:
       tags:
       - Usuários
       summary: Criar conta
-      description: 'A pessoa troca a senha e configura o 2FA no primeiro login. Quem não é administrador só pode conceder
-        abas que tem.
+      description: 'A pessoa troca a senha no primeiro login. `email` é opcional: se informado, já recebe o código do login;
+        senão, a pessoa cadastra o dela no primeiro login. Quem não é administrador só pode conceder abas que tem.
 
 
         **Quem pode:** Administrador ou Usuários.'
@@ -3354,6 +3373,7 @@ paths:
               permissoes:
               - FORNECEDORES
               - MOVIMENTACOES
+              email: compras@empresa.com.br
       responses:
         '201':
           description: Criado.
@@ -3369,6 +3389,7 @@ paths:
                 - FORNECEDORES
                 doisFatoresAtivo: false
                 trocarSenha: true
+                email: null
         '400':
           $ref: '#/components/responses/Erro400'
         '401':
@@ -3382,7 +3403,8 @@ paths:
       tags:
       - Usuários
       summary: Editar conta (e redefinir senha)
-      description: '`senha` é opcional: se enviada, a pessoa troca no próximo login e as sessões dela são encerradas.
+      description: '`email`: trocar encerra as sessões da conta; vazio apaga (a pessoa cadastra outro no próximo login). `senha`
+        é opcional: se enviada, a pessoa troca no próximo login e as sessões dela são encerradas.
 
 
         **Quem pode:** Administrador ou Usuários.'
@@ -3406,6 +3428,7 @@ paths:
               - FORNECEDORES
               - MOVIMENTACOES
               - PASTILHAS
+              email: compras@empresa.com.br
       responses:
         '200':
           description: OK.
@@ -3421,6 +3444,7 @@ paths:
                 - PASTILHAS
                 doisFatoresAtivo: false
                 trocarSenha: true
+                email: null
         '400':
           $ref: '#/components/responses/Erro400'
         '401':
@@ -3464,8 +3488,9 @@ paths:
     post:
       tags:
       - Usuários
-      summary: Redefinir o 2FA (celular perdido)
-      description: 'Desliga o 2FA e encerra as sessões da conta; ela configura o app de novo no próximo login.
+      summary: Redefinir o 2FA (perdeu o acesso ao e-mail)
+      description: 'Apaga o e-mail do 2FA e encerra as sessões da conta; no próximo login ela informa e confirma um e-mail
+        novo.
 
 
         **Quem pode:** Administrador.'
@@ -3492,6 +3517,7 @@ paths:
                 - PASTILHAS
                 doisFatoresAtivo: false
                 trocarSenha: true
+                email: null
         '401':
           $ref: '#/components/responses/Erro401'
         '403':

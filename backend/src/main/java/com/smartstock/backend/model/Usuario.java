@@ -1,5 +1,6 @@
 package com.smartstock.backend.model;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -22,8 +23,8 @@ import jakarta.persistence.Table;
 
 /**
  * <b>Em palavras simples:</b> Tabela usuarios: as contas de acesso. Guarda nome, usuário, a senha (só o "hash", uma versão
- * embaralhada que não dá para desfazer), o perfil, as abas permitidas e os dados do 2FA (segredo cifrado,
- * códigos de recuperação) e a "versão do token", que permite encerrar todas as sessões da conta de uma vez.
+ * embaralhada que não dá para desfazer), o perfil, as abas permitidas, o e-mail que recebe o código do 2FA
+ * e a "versão do token", que permite encerrar todas as sessões da conta de uma vez.
  */
 @Entity
 @Table(name = "usuarios")
@@ -53,33 +54,36 @@ public class Usuario {
     @Column(name = "modulo", nullable = false)
     private Set<Modulo> permissoes = new HashSet<>();
 
-    /** 2FA (app autenticador): ativo depois que a pessoa escaneia o QR code e confirma um código. */
-    @ColumnDefault("false")
-    @Column(nullable = false)
-    private boolean doisFatoresAtivo = false;
+    /**
+     * E-mail confirmado da pessoa: é para ele que vai o código de cada login (2FA por e-mail).
+     * Enquanto estiver vazio, o próximo login pede para cadastrar um e-mail e confirmar com um código.
+     */
+    @Column(length = 254)
+    private String email;
 
-    /** Segredo do app autenticador, cifrado (AES-GCM) com a chave do servidor. Nunca sai na API. */
+    /** E-mail informado no primeiro login, esperando a confirmação pelo código enviado a ele. */
     @JsonIgnore
-    @Column(length = 200)
-    private String totpSegredo;
+    @Column(length = 254)
+    private String emailPendente;
 
-    /** Segredo gerado durante a configuração, ainda não confirmado com um código. */
+    /** Código de login enviado por e-mail, guardado só como "impressão digital" (HMAC), nunca o código em si. */
     @JsonIgnore
-    @Column(length = 200)
-    private String totpPendente;
+    @Column(length = 100)
+    private String codigoEmailHash;
 
-    /** Último intervalo de 30 s já usado num login: impede reaproveitar o mesmo código. */
+    /** Até quando o código enviado vale (10 minutos depois do envio). */
+    @JsonIgnore
+    private LocalDateTime codigoEmailExpira;
+
+    /** Quando o último código foi enviado (para não deixar reenviar sem parar). */
+    @JsonIgnore
+    private LocalDateTime codigoEmailEnviado;
+
+    /** Erros seguidos com o código atual: no 5º erro o código é cancelado e é preciso pedir outro. */
     @JsonIgnore
     @ColumnDefault("0")
     @Column(nullable = false)
-    private long totpUltimoPasso = 0;
-
-    /** Códigos de recuperação (uso único), guardados só como hash BCrypt. */
-    @JsonIgnore
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "usuario_codigos_recuperacao", joinColumns = @JoinColumn(name = "usuario_id"))
-    @Column(name = "codigo_hash", nullable = false)
-    private Set<String> codigosRecuperacao = new HashSet<>();
+    private int codigoEmailTentativas = 0;
 
     /** Aumenta a cada troca de senha, saída ou redefinição do 2FA: derruba os logins abertos dessa conta. */
     @JsonIgnore
@@ -140,40 +144,60 @@ public class Usuario {
         this.permissoes = permissoes != null ? permissoes : new HashSet<>();
     }
 
+    /** O 2FA está ativo quando a conta tem um e-mail confirmado (aparece como "doisFatoresAtivo" na API). */
     public boolean isDoisFatoresAtivo() {
-        return doisFatoresAtivo;
+        return email != null && !email.isBlank();
     }
 
-    public void setDoisFatoresAtivo(boolean doisFatoresAtivo) {
-        this.doisFatoresAtivo = doisFatoresAtivo;
+    public String getEmail() {
+        return email;
     }
 
-    public String getTotpSegredo() {
-        return totpSegredo;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
-    public void setTotpSegredo(String totpSegredo) {
-        this.totpSegredo = totpSegredo;
+    public String getEmailPendente() {
+        return emailPendente;
     }
 
-    public String getTotpPendente() {
-        return totpPendente;
+    public void setEmailPendente(String emailPendente) {
+        this.emailPendente = emailPendente;
     }
 
-    public void setTotpPendente(String totpPendente) {
-        this.totpPendente = totpPendente;
+    public String getCodigoEmailHash() {
+        return codigoEmailHash;
     }
 
-    public long getTotpUltimoPasso() {
-        return totpUltimoPasso;
+    public LocalDateTime getCodigoEmailExpira() {
+        return codigoEmailExpira;
     }
 
-    public void setTotpUltimoPasso(long totpUltimoPasso) {
-        this.totpUltimoPasso = totpUltimoPasso;
+    public LocalDateTime getCodigoEmailEnviado() {
+        return codigoEmailEnviado;
     }
 
-    public Set<String> getCodigosRecuperacao() {
-        return codigosRecuperacao;
+    public int getCodigoEmailTentativas() {
+        return codigoEmailTentativas;
+    }
+
+    public void setCodigoEmailTentativas(int codigoEmailTentativas) {
+        this.codigoEmailTentativas = codigoEmailTentativas;
+    }
+
+    /** Guarda um código novo (já transformado em HMAC), válido por alguns minutos. */
+    public void novoCodigoEmail(String hash, LocalDateTime agora, int minutosValidade) {
+        this.codigoEmailHash = hash;
+        this.codigoEmailEnviado = agora;
+        this.codigoEmailExpira = agora.plusMinutes(minutosValidade);
+        this.codigoEmailTentativas = 0;
+    }
+
+    /** Apaga o código atual (depois de usado, vencido ou de muitos erros): ele não vale mais. */
+    public void cancelarCodigoEmail() {
+        this.codigoEmailHash = null;
+        this.codigoEmailExpira = null;
+        this.codigoEmailTentativas = 0;
     }
 
     public int getTokenVersao() {
@@ -197,12 +221,10 @@ public class Usuario {
         this.trocarSenha = trocarSenha;
     }
 
-    /** Desliga o 2FA (redefinição pelo administrador): a pessoa configura de novo no próximo login. */
+    /** Desliga o 2FA (redefinição pelo administrador): a pessoa cadastra e confirma um e-mail no próximo login. */
     public void limparDoisFatores() {
-        this.doisFatoresAtivo = false;
-        this.totpSegredo = null;
-        this.totpPendente = null;
-        this.totpUltimoPasso = 0;
-        this.codigosRecuperacao.clear();
+        this.email = null;
+        this.emailPendente = null;
+        cancelarCodigoEmail();
     }
 }

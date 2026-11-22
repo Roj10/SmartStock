@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.smartstock.backend.dto.AuthDtos.CodigoRequest;
-import com.smartstock.backend.dto.AuthDtos.ConfiguracaoDoisFatores;
 import com.smartstock.backend.dto.AuthDtos.DesafioRequest;
+import com.smartstock.backend.dto.AuthDtos.EmailRequest;
 import com.smartstock.backend.dto.AuthDtos.RespostaLogin;
 import com.smartstock.backend.dto.AuthDtos.TrocarSenhaRequest;
 import com.smartstock.backend.dto.LoginRequest;
@@ -22,7 +22,8 @@ import jakarta.validation.Valid;
  *
  * Um "controller" é a porta de entrada da API: recebe o pedido que vem do navegador, passa para o
  * "service" fazer o trabalho e devolve a resposta. Aqui ficam as etapas do login:
- * 1) usuário e senha; 2) configurar ou digitar o código do app autenticador (2FA);
+ * 1) usuário e senha; 2) código de 6 dígitos enviado por e-mail (2FA) — na primeira vez, antes, a pessoa
+ * informa o e-mail;
  * 3) trocar a senha, quando exigido; e "sair". São as únicas rotas abertas sem login.
  */
 @RestController
@@ -40,19 +41,22 @@ public class AuthController {
         return authService.login(request);
     }
 
-    @PostMapping("/2fa/configurar")
-    public ConfiguracaoDoisFatores configurar(@Valid @RequestBody DesafioRequest request) {
-        return authService.configurarDoisFatores(request.desafio());
+    /** Primeira vez: a pessoa informa o e-mail; um código é enviado para ele. */
+    @PostMapping("/email/cadastrar")
+    public RespostaLogin cadastrarEmail(@Valid @RequestBody EmailRequest request) {
+        return authService.cadastrarEmail(request.desafio(), request.email());
     }
 
-    @PostMapping("/2fa/ativar")
-    public RespostaLogin ativar(@Valid @RequestBody CodigoRequest request) {
-        return authService.ativarDoisFatores(request.desafio(), request.codigo());
+    /** Confere o código de 6 dígitos que chegou por e-mail. */
+    @PostMapping("/email/verificar")
+    public RespostaLogin verificarCodigo(@Valid @RequestBody CodigoRequest request) {
+        return authService.verificarCodigo(request.desafio(), request.codigo());
     }
 
-    @PostMapping("/2fa/verificar")
-    public RespostaLogin verificar(@Valid @RequestBody CodigoRequest request) {
-        return authService.verificarDoisFatores(request.desafio(), request.codigo());
+    /** Envia um código novo (o anterior deixa de valer). Só uma vez por minuto. */
+    @PostMapping("/email/reenviar")
+    public RespostaLogin reenviarCodigo(@Valid @RequestBody DesafioRequest request) {
+        return authService.reenviarCodigo(request.desafio());
     }
 
     @PostMapping("/trocar-senha")

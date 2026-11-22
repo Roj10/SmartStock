@@ -1,6 +1,7 @@
 /*
- * Em palavras simples: Tela Usuários (administração): criar e editar contas, escolher as abas de cada uma, ver se o 2FA
- * está ativo, redefinir o 2FA de quem perdeu o celular e consultar os eventos de segurança.
+ * Em palavras simples: Tela Usuários (administração): criar e editar contas, escolher as abas de cada uma, definir o
+ * e-mail que recebe o código do login (2FA), apagar esse e-mail de quem perdeu o acesso a ele e consultar os eventos
+ * de segurança.
  */
 import { useEffect, useState } from 'react';
 import api from '../api/client';
@@ -18,19 +19,20 @@ const MODULOS = [
 
 const ROLE_LABEL = { ADMIN: 'Administrador', OPERADOR: 'Funcionário' };
 
-const EMPTY_FORM = { nome: '', username: '', senha: '', role: 'OPERADOR', permissoes: [] };
+const EMPTY_FORM = { nome: '', username: '', email: '', senha: '', role: 'OPERADOR', permissoes: [] };
 
 // Nomes amigáveis dos eventos de segurança (as falhas aparecem em vermelho)
 const EVENTOS = {
   LOGIN_OK: 'Login concluído',
-  LOGIN_SENHA_OK: 'Senha correta (aguardando 2FA)',
+  LOGIN_SENHA_OK: 'Senha correta (aguardando código do e-mail)',
   LOGIN_FALHA: 'Senha errada',
   LOGIN_BLOQUEADO: 'Login bloqueado (tentativas)',
-  '2FA_ATIVADO': '2FA ativado',
-  '2FA_FALHA': 'Código 2FA errado',
+  '2FA_CODIGO_ENVIADO': 'Código enviado por e-mail',
+  '2FA_ATIVADO': 'E-mail confirmado (2FA ativo)',
+  '2FA_FALHA': 'Código do e-mail errado',
   '2FA_BLOQUEADO': '2FA bloqueado (tentativas)',
-  '2FA_RECUPERACAO': 'Código de recuperação usado',
-  '2FA_REDEFINIDO': '2FA redefinido',
+  '2FA_REDEFINIDO': '2FA redefinido (e-mail apagado)',
+  '2FA_EMAIL_ALTERADO': 'E-mail do 2FA alterado',
   SENHA_TROCADA: 'Senha trocada',
   SENHA_REDEFINIDA: 'Senha redefinida',
   SAIDA: 'Saiu do sistema',
@@ -78,7 +80,7 @@ export default function Usuarios() {
   async function redefinirDoisFatores(u) {
     if (
       !window.confirm(
-        `Redefinir o 2FA de "${u.nome}"? Use quando a pessoa perdeu o celular. Ela será desconectada e configurará o app de novo no próximo login.`
+        `Redefinir o 2FA de "${u.nome}"? Use quando a pessoa perdeu o acesso ao e-mail ${u.email ?? ''}. Ela será desconectada e, no próximo login, informará e confirmará um e-mail novo.`
       )
     )
       return;
@@ -99,7 +101,7 @@ export default function Usuarios() {
 
   function abrirEdicao(u) {
     setEditando(u);
-    setForm({ nome: u.nome, username: u.username, senha: '', role: u.role, permissoes: u.permissoes ?? [] });
+    setForm({ nome: u.nome, username: u.username, email: u.email ?? '', senha: '', role: u.role, permissoes: u.permissoes ?? [] });
     setFormError('');
     setModalAberto(true);
   }
@@ -117,9 +119,18 @@ export default function Usuarios() {
     e.preventDefault();
     setSalvando(true);
     setFormError('');
-    const payload = { ...form };
+    const payload = { ...form, email: form.email.trim() };
     if (editando && !payload.senha) {
       delete payload.senha;
+    }
+    if (editando && payload.email !== (editando.email ?? '') && editando.email) {
+      const msg = payload.email
+        ? `Trocar o e-mail do 2FA de "${editando.nome}" para ${payload.email}? A pessoa será desconectada.`
+        : `Apagar o e-mail do 2FA de "${editando.nome}"? Ela será desconectada e cadastrará um e-mail no próximo login.`;
+      if (!window.confirm(msg)) {
+        setSalvando(false);
+        return;
+      }
     }
     try {
       if (editando) {
@@ -185,8 +196,9 @@ export default function Usuarios() {
       </header>
 
       <div className="alert alert-info">
-        Toda conta entra com senha e com o código do app autenticador (2FA). Senhas ficam criptografadas e não podem ser
-        vistas, só redefinidas; quem recebe uma senha nova troca no próximo login.
+        Toda conta entra com senha e com um código de 6 dígitos enviado ao e-mail dela (2FA). Se o e-mail ficar em
+        branco, a pessoa cadastra o dela no primeiro login. Senhas ficam criptografadas e não podem ser vistas, só
+        redefinidas; quem recebe uma senha nova troca no próximo login.
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -236,7 +248,7 @@ export default function Usuarios() {
               <thead>
                 <tr>
                   <th>Nome</th>
-                  <th>E-mail / usuário</th>
+                  <th>Usuário</th>
                   <th>Perfil</th>
                   <th>Acesso</th>
                   <th>2FA</th>
@@ -271,10 +283,11 @@ export default function Usuarios() {
                     <td>
                       <span
                         className={`badge ${u.doisFatoresAtivo ? 'badge-2fa-ok' : 'badge-2fa-pendente'}`}
-                        title={u.doisFatoresAtivo ? 'App autenticador configurado' : 'A pessoa configura o app no próximo login'}
+                        title={u.doisFatoresAtivo ? 'O código do login vai para este e-mail' : 'A pessoa cadastra o e-mail no próximo login'}
                       >
                         {u.doisFatoresAtivo ? 'Ativo' : 'Pendente'}
                       </span>
+                      {u.email && <div className="text-muted">{u.email}</div>}
                       {u.trocarSenha && <div className="text-muted">Troca de senha pendente</div>}
                     </td>
                     <td className="table-actions">
@@ -309,14 +322,27 @@ export default function Usuarios() {
               <input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required autoFocus />
             </label>
             <label>
-              E-mail / usuário
+              Usuário (para entrar no sistema)
               <input
                 type="text"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
-                placeholder="funcionario@empresa.com"
+                placeholder="ex.: compras"
                 required
               />
+            </label>
+            <label>
+              E-mail (recebe o código do login)
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="funcionario@empresa.com"
+                maxLength={254}
+              />
+              <small className="form-hint">
+                Opcional. Em branco, a pessoa informa e confirma o próprio e-mail no primeiro login.
+              </small>
             </label>
             <label>
               {editando ? 'Nova senha' : 'Senha'}

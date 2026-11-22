@@ -8,7 +8,7 @@ Quem fala com quem, e por onde passam os dados. Todo o tráfego que sai do servi
 flowchart LR
     subgraph Usuario["Computador ou celular do usuário"]
         nav["Navegador<br/>(telas em React)"]
-        cel["App autenticador<br/>(código 2FA)"]
+        cel["Caixa de e-mail<br/>(código 2FA)"]
     end
 
     subgraph AWS["AWS EC2 (Ubuntu) – Elastic IP"]
@@ -27,6 +27,7 @@ flowchart LR
     api -- "HTTPS + chave secreta" --> st
     nav -. "fotos dos itens (HTTPS)" .-> st
     cel -. "o usuário digita o código" .-> nav
+    api -- "SMTP + TLS (código do login)" --> gm[["Gmail"]] --> cel
 ```
 
 ## 2. Camadas do backend
@@ -51,7 +52,7 @@ flowchart TB
 
 ## 3. Banco de dados (modelo entidade-relacionamento)
 
-Tabelas criadas pelas migrations `V1__esquema_inicial.sql` e `V2__seguranca_2fa.sql` (Flyway).
+Tabelas criadas pelas migrations `V1__esquema_inicial.sql`, `V2__seguranca_2fa.sql` e `V3__dois_fatores_por_email.sql` (Flyway).
 
 ```mermaid
 erDiagram
@@ -61,18 +62,15 @@ erDiagram
         varchar username UK
         varchar senha "hash BCrypt"
         varchar role "ADMIN | OPERADOR"
-        boolean dois_fatores_ativo
-        varchar totp_segredo "cifrado AES-GCM"
+        varchar email "recebe o código do login"
+        varchar codigo_email_hash "HMAC, nunca o código"
+        timestamp codigo_email_expira
         int token_versao
         boolean trocar_senha
     }
     USUARIO_PERMISSOES {
         bigint usuario_id FK
         varchar modulo "PASTILHAS, MOVIMENTACOES..."
-    }
-    USUARIO_CODIGOS_RECUPERACAO {
-        bigint usuario_id FK
-        varchar codigo_hash
     }
     EVENTOS_SEGURANCA {
         bigint id PK
@@ -172,7 +170,6 @@ erDiagram
     }
 
     USUARIOS ||--o{ USUARIO_PERMISSOES : "tem"
-    USUARIOS ||--o{ USUARIO_CODIGOS_RECUPERACAO : "tem"
     USUARIOS ||--o{ MOVIMENTACOES : "registra"
     USUARIOS ||--o{ MENSAGENS : "envia"
     USUARIOS ||--o{ MENSAGENS : "recebe"
@@ -190,7 +187,7 @@ erDiagram
     PROJETOS |o--o{ VENDAS : "origina"
 ```
 
-## 4. Sequência do login com 2FA
+## 4. Sequência do login com 2FA por e-mail
 
 ```mermaid
 sequenceDiagram
@@ -199,29 +196,29 @@ sequenceDiagram
     participant F as Frontend (React)
     participant B as Backend
     participant D as Banco
-    participant A as App autenticador
+    participant E as Gmail (SMTP)
 
     U->>F: usuário e senha
     F->>B: POST /api/auth/login
     B->>D: busca a conta e confere o hash da senha
     alt senha errada
         B-->>F: 401 (5 erros seguidos = bloqueio de 15 min)
-    else primeira vez (2FA ainda não configurado)
-        B-->>F: etapa CONFIGURAR_2FA + desafio (vale 5 min)
-        F->>B: POST /api/auth/2fa/configurar
-        B->>D: guarda o segredo novo (cifrado)
-        B-->>F: QR code
-        U->>A: lê o QR code
-        A-->>U: código de 6 dígitos
-        U->>F: digita o código
-        F->>B: POST /api/auth/2fa/ativar
-        B-->>F: 8 códigos de recuperação + próxima etapa
-    else 2FA já configurado
-        B-->>F: etapa CODIGO_2FA + desafio
-        A-->>U: código de 6 dígitos
-        U->>F: digita o código
-        F->>B: POST /api/auth/2fa/verificar
+    else primeira vez (conta sem e-mail)
+        B-->>F: etapa CADASTRAR_EMAIL + desafio (vale 10 min)
+        U->>F: informa o e-mail
+        F->>B: POST /api/auth/email/cadastrar
+        B->>D: guarda o e-mail (pendente) e o HMAC de um código novo
+        B->>E: envia o código (TLS)
+        B-->>F: etapa CODIGO_EMAIL + e-mail mascarado
+    else conta com e-mail confirmado
+        B->>D: guarda o HMAC de um código novo
+        B->>E: envia o código (TLS)
+        B-->>F: etapa CODIGO_EMAIL + e-mail mascarado
     end
+    E-->>U: e-mail com o código de 6 dígitos
+    U->>F: digita o código
+    F->>B: POST /api/auth/email/verificar
+    B->>D: confere HMAC e validade, apaga o código (uso único)
     opt senha de exemplo ou definida pelo administrador
         B-->>F: etapa TROCAR_SENHA
         U->>F: senha nova

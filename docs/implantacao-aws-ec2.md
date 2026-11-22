@@ -113,11 +113,13 @@ Preencha as mesmas linhas do seu `backend/.env` e acrescente o endereço públic
 SUPABASE_DB_PASSWORD=...
 SMARTSTOCK_SECRET=...
 SUPABASE_SERVICE_KEY=...
+MAIL_USUARIO=...
+MAIL_SENHA=...
 CORS_ORIGENS=http://SEU_ELASTIC_IP
 ```
 
 Salve com `Ctrl+O`, `Enter`, e saia com `Ctrl+X`. **Nunca** coloque esse arquivo no GitHub. Use o **mesmo**
-`SMARTSTOCK_SECRET` do seu computador se o banco for o mesmo (senão todos precisam configurar o 2FA de novo).
+`SMARTSTOCK_SECRET` do seu computador se o banco for o mesmo (senão todos precisam entrar de novo).
 
 ## 7. Publicar o sistema
 
@@ -165,6 +167,7 @@ um **domínio** apontando para o Elastic IP:
 
 | Sintoma | O que fazer |
 |---------|-------------|
+| O código de login não chega por e-mail | Veja `sudo journalctl -u smartstock -n 100` (`Falha ao enviar e-mail`). A instância precisa sair pela porta **465** para o Gmail: o Security Group libera saída por padrão; confira se não foi alterado. |
 | `ssh: connect to host ... timed out` | Seu IP mudou: atualize a regra 22 do Security Group com **Meu IP**. |
 | `Permissions for 'smartstock.pem' are too open` | Rode o comando `icacls` do passo 4. |
 | Site abre, mas "Erro ao entrar"/nada carrega | O backend não subiu: veja `sudo journalctl -u smartstock -n 100`. Normalmente falta uma linha no `/opt/smartstock/.env`. |

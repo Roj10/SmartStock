@@ -65,7 +65,12 @@ public class UsuarioService {
         usuario.setSenha(passwordEncoder.encode(request.getSenha()));
         usuario.setRole(request.getRole());
         usuario.setPermissoes(request.getPermissoes());
-        // a senha foi escolhida por outra pessoa: a dona da conta troca no primeiro login (e configura o 2FA)
+        // e-mail informado pelo administrador: já recebe o código no primeiro login (senão, a pessoa cadastra o dela)
+        String email = emailInformado(request.getEmail());
+        if (email != null && !email.isEmpty()) {
+            usuario.setEmail(email);
+        }
+        // a senha foi escolhida por outra pessoa: a dona da conta troca no primeiro login
         usuario.setTrocarSenha(true);
         Usuario salvo = usuarioRepository.save(usuario);
         auditoria.registrar("USUARIO_CRIADO", usernameAtor, "Criou a conta " + salvo.getUsername() + " ("
@@ -112,6 +117,20 @@ public class UsuarioService {
             usuario.encerrarSessoes();
             auditoria.registrar("SENHA_REDEFINIDA", usernameAtor, "Redefiniu a senha de " + usuario.getUsername());
         }
+        String email = emailInformado(request.getEmail());
+        if (email != null && !email.equals(usuario.getEmail() == null ? "" : usuario.getEmail())) {
+            // trocar o e-mail do 2FA é sensível: encerra as sessões da conta e cancela códigos em andamento
+            if (email.isEmpty()) {
+                usuario.limparDoisFatores();
+            } else {
+                usuario.setEmail(email);
+                usuario.setEmailPendente(null);
+                usuario.cancelarCodigoEmail();
+            }
+            usuario.encerrarSessoes();
+            auditoria.registrar("2FA_EMAIL_ALTERADO", usernameAtor, "Alterou o e-mail do 2FA de " + usuario.getUsername()
+                    + (email.isEmpty() ? " (apagado: cadastra de novo no próximo login)" : " para " + EmailService.mascarar(email)));
+        }
         if (mudouAcesso) {
             auditoria.registrar("PERMISSOES_ALTERADAS", usernameAtor, "Conta " + usuario.getUsername() + ": "
                     + usuario.getRole() + ", abas " + usuario.getPermissoes());
@@ -119,7 +138,10 @@ public class UsuarioService {
         return usuarioRepository.save(usuario);
     }
 
-    /** O administrador desliga o 2FA de uma conta (celular perdido): ela configura de novo no próximo login. */
+    /**
+     * O administrador apaga o e-mail do 2FA de uma conta (a pessoa perdeu o acesso ao e-mail): no próximo login
+     * ela informa e confirma um e-mail novo.
+     */
     @Transactional
     public Usuario redefinirDoisFatores(Long id, String usernameAtor) {
         Usuario usuario = buscarPorId(id);
@@ -151,6 +173,21 @@ public class UsuarioService {
         mensagemService.excluirConversasDoUsuario(id);
         usuarioRepository.delete(usuario);
         auditoria.registrar("USUARIO_EXCLUIDO", usernameAtor, "Excluiu a conta " + usuario.getUsername());
+    }
+
+    /**
+     * Lê o e-mail enviado no formulário: null = não mexer; "" = apagar; senão, o e-mail em minúsculas.
+     * Recusa endereços inválidos.
+     */
+    private static String emailInformado(String email) {
+        if (email == null) {
+            return null;
+        }
+        String limpo = email.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!limpo.isEmpty() && !EmailService.emailValido(limpo)) {
+            throw new BusinessException("E-mail inválido: " + email);
+        }
+        return limpo;
     }
 
     /** Quem não é administrador só pode conceder abas que ele mesmo tem. */

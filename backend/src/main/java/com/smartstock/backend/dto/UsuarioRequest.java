@@ -10,7 +10,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * <b>Em palavras simples:</b> Formato dos dados para criar ou editar uma conta: nome, usuário, senha, perfil e abas permitidas.
+ * <b>Em palavras simples:</b> Formato dos dados para criar ou editar uma conta: nome, usuário, senha, e-mail
+ * (que recebe o código do login), perfil e abas permitidas.
  */
 public class UsuarioRequest {
 
@@ -31,6 +32,22 @@ public class UsuarioRequest {
     private Role role;
 
     private Set<Modulo> permissoes;
+
+    /**
+     * E-mail que recebe o código de cada login (opcional). Se o administrador informar, a conta já começa com o
+     * 2FA ativo nesse e-mail; se ficar vazio, a pessoa cadastra o próprio e-mail no primeiro login.
+     * Ao editar: vazio apaga o e-mail (a pessoa cadastra de novo no próximo login).
+     */
+    @Size(max = 254, message = "E-mail muito longo")
+    private String email;
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
     public String getNome() {
         return nome;

@@ -11,11 +11,11 @@ A coluna *Onde* aponta o arquivo principal no código (`backend/src/main/java/co
 | Id | Requisito | Prioridade | Onde |
 |----|-----------|------------|------|
 | RF01 | O sistema deve exigir login com usuário e senha para qualquer acesso. | Alta | `controller/AuthController`, `pages/Login.jsx` |
-| RF02 | Toda conta deve usar verificação em duas etapas (2FA) com aplicativo autenticador (código de 6 dígitos que muda a cada 30 s). Na primeira entrada, o sistema mostra um QR code para configurar o app. | Alta | `service/AuthService`, `security/Totp`, `security/QrCode` |
-| RF03 | Ao ativar o 2FA, o sistema deve gerar 8 códigos de recuperação de uso único, para quem perder o celular. | Alta | `service/AuthService` |
+| RF02 | Toda conta deve usar verificação em duas etapas (2FA) por e-mail: a cada login, um código aleatório de 6 dígitos é enviado ao e-mail da conta, vale 10 minutos e uma única vez. | Alta | `service/AuthService`, `service/EmailService` |
+| RF03 | Na primeira entrada de uma conta sem e-mail, o sistema deve pedir o e-mail e só aceitá-lo depois que o código enviado a ele for digitado; deve permitir reenviar o código (no máximo a cada 60 s). | Alta | `service/AuthService`, `pages/Login.jsx` |
 | RF04 | O sistema deve obrigar a troca de senha no primeiro acesso e sempre que o administrador definir uma senha. | Alta | `service/AuthService`, `service/PoliticaSenha` |
 | RF05 | O administrador deve poder criar, editar e excluir contas, definir o perfil (Administrador/Operador) e escolher quais abas cada conta acessa. | Alta | `controller/UsuarioController`, `pages/Usuarios.jsx` |
-| RF06 | O administrador deve poder redefinir o 2FA de uma conta (celular perdido). | Média | `UsuarioController` (`/redefinir-2fa`) |
+| RF06 | O administrador deve poder definir ou trocar o e-mail do 2FA de uma conta e redefinir o 2FA (apagar o e-mail de quem perdeu o acesso a ele). | Média | `UsuarioService`, `UsuarioController` (`/redefinir-2fa`) |
 | RF07 | O usuário deve poder sair do sistema, encerrando todas as sessões abertas da conta. | Média | `AuthController` (`/sair`) |
 | RF08 | O sistema deve registrar os eventos de segurança (logins, falhas, bloqueios, 2FA, troca de senha) e mostrá-los ao administrador. | Média | `service/AuditoriaService`, `controller/SegurancaController` |
 
@@ -71,8 +71,8 @@ A coluna *Onde* aponta o arquivo principal no código (`backend/src/main/java/co
 |----|-----------|-----------|-------------------|
 | RNF01 | Segurança | Senhas guardadas apenas como *hash* BCrypt; política de senha forte (8+ caracteres, letras e números, sem conter o usuário). | `SecurityConfig.passwordEncoder`, `PoliticaSenha` |
 | RNF02 | Segurança | Autenticação sem estado com token JWT assinado (HS256), validade de 8 h, revogável ("Sair", troca de senha, redefinição de 2FA). | `JwtService`, campo `token_versao` |
-| RNF03 | Segurança | Segredos do 2FA cifrados no banco (AES-256-GCM); códigos de recuperação com hash; cada código do app aceito uma única vez. | `Segredos`, `Totp` |
-| RNF04 | Segurança | Bloqueio de 15 minutos após 5 tentativas erradas (senha, 2FA, senha de administrador). | `TentativasService` |
+| RNF03 | Segurança | Códigos do 2FA gerados com `SecureRandom`, guardados só como HMAC-SHA256 (nunca o código), comparados em tempo constante, de uso único; 5 erros cancelam o código; envio por SMTP com TLS e certificado conferido; e-mail validado contra injeção de cabeçalhos. | `Segredos`, `AuthService`, `EmailService` |
+| RNF04 | Segurança | Bloqueio de 15 minutos após 5 tentativas erradas (senha, código do e-mail, senha de administrador); reenvio de código limitado a 1 por minuto. | `TentativasService`, `AuthService` |
 | RNF05 | Segurança | Controle de acesso por perfil e por aba em todas as rotas da API (não só nas telas). | `@PreAuthorize` nos controllers |
 | RNF06 | Segurança | Tráfego cifrado: TLS com verificação de certificado até o banco (Supabase); HTTPS no servidor público (Nginx + certbot). | `BancoSeguro`, `deploy/nginx-smartstock.conf` |
 | RNF07 | Segurança | Banco protegido contra acesso direto pela API pública do Supabase (RLS ligado e permissões revogadas); arquivos privados só passam pelo backend. | `BancoSeguro`, `SupabaseStorage` |

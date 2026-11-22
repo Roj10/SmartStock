@@ -1,32 +1,28 @@
 package com.smartstock.backend.security;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
+import java.security.MessageDigest;
 import java.util.Base64;
 
-import javax.crypto.Cipher;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Chaves do servidor, todas derivadas de um único segredo (SMARTSTOCK_SECRET, no backend/.env):
- * uma assina os tokens de login (JWT) e outra cifra os segredos do 2FA guardados no banco.
+ * <b>Em palavras simples:</b> as chaves do servidor, todas tiradas de um único segredo (SMARTSTOCK_SECRET,
+ * no backend/.env). Uma assina os "crachás" de login (tokens JWT); a outra gera a "impressão digital"
+ * dos códigos enviados por e-mail, para o banco nunca guardar o código em si.
  * O segredo nunca fica no código: o repositório é público.
  */
 @Component
 public class Segredos {
 
-    private static final SecureRandom ALEATORIO = new SecureRandom();
-
     private final SecretKey chaveJwt;
-    private final SecretKeySpec chaveCifra;
+    private final SecretKeySpec chaveCodigos;
 
     public Segredos(@Value("${app.seguranca.segredo:}") String segredo) {
         if (segredo == null || segredo.trim().length() < 32 || segredo.trim().startsWith("coloque-")) {
@@ -36,36 +32,33 @@ public class Segredos {
         }
         byte[] mestre = segredo.trim().getBytes(StandardCharsets.UTF_8);
         this.chaveJwt = new SecretKeySpec(derivar(mestre, "smartstock-jwt"), "HmacSHA256");
-        this.chaveCifra = new SecretKeySpec(derivar(mestre, "smartstock-2fa"), "AES");
+        this.chaveCodigos = new SecretKeySpec(derivar(mestre, "smartstock-codigo-email"), "HmacSHA256");
     }
 
     public SecretKey chaveJwt() {
         return chaveJwt;
     }
 
-    /** Cifra com AES-256-GCM (IV aleatório junto do texto); o resultado vai para o banco em Base64. */
-    public String cifrar(String texto) {
+    /**
+     * "Impressão digital" (HMAC-SHA256) de um código de login, ligada à conta. Mesmo quem tiver uma cópia do banco
+     * não consegue descobrir o código a partir dela sem o SMARTSTOCK_SECRET.
+     */
+    public String impressaoDigital(String username, String codigo) {
         try {
-            byte[] iv = new byte[12];
-            ALEATORIO.nextBytes(iv);
-            Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
-            c.init(Cipher.ENCRYPT_MODE, chaveCifra, new GCMParameterSpec(128, iv));
-            byte[] cifrado = c.doFinal(texto.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(ByteBuffer.allocate(iv.length + cifrado.length).put(iv).put(cifrado).array());
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(chaveCodigos);
+            byte[] resultado = mac.doFinal((username.toLowerCase(java.util.Locale.ROOT) + ":" + codigo)
+                    .getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(resultado);
         } catch (GeneralSecurityException e) {
-            throw new IllegalStateException("Falha ao cifrar.", e);
+            throw new IllegalStateException(e);
         }
     }
 
-    public String decifrar(String base64) {
-        try {
-            byte[] tudo = Base64.getDecoder().decode(base64);
-            Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
-            c.init(Cipher.DECRYPT_MODE, chaveCifra, new GCMParameterSpec(128, tudo, 0, 12));
-            return new String(c.doFinal(tudo, 12, tudo.length - 12), StandardCharsets.UTF_8);
-        } catch (GeneralSecurityException | IllegalArgumentException e) {
-            throw new IllegalStateException("Não foi possível ler o segredo do 2FA (o SMARTSTOCK_SECRET mudou?).", e);
-        }
+    /** Compara duas impressões digitais em tempo constante (não deixa medir "quantos caracteres acertou"). */
+    public static boolean iguais(String a, String b) {
+        return a != null && b != null && MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8),
+                b.getBytes(StandardCharsets.UTF_8));
     }
 
     private static byte[] derivar(byte[] mestre, String finalidade) {

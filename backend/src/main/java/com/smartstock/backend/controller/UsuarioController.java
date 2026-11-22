@@ -23,7 +23,7 @@ import jakarta.validation.Valid;
 
 /**
  * <b>Em palavras simples:</b> Rotas de Usuários (/api/usuarios/...): criar, listar, editar e excluir contas, escolher as abas
- * de cada uma e redefinir o 2FA de quem perdeu o celular.
+ * de cada uma e redefinir o 2FA (apagar o e-mail) de quem perdeu o acesso ao e-mail.
  */
 @RestController
 @RequestMapping("/api/usuarios")
@@ -53,7 +53,7 @@ public class UsuarioController {
         return usuarioService.atualizar(id, request, authentication.getName());
     }
 
-    /** Desliga o 2FA da conta (ex.: celular perdido); só o administrador. */
+    /** Apaga o e-mail do 2FA da conta (a pessoa perdeu o acesso a ele); só o administrador. */
     @PostMapping("/{id}/redefinir-2fa")
     @PreAuthorize("hasRole('ADMIN')")
     public Usuario redefinirDoisFatores(@PathVariable Long id, Authentication authentication) {

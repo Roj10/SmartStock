@@ -14,18 +14,18 @@ import io.jsonwebtoken.Jwts;
 /**
  * Tokens assinados com a chave do servidor (derivada do SMARTSTOCK_SECRET).
  * - "acesso": usado nas chamadas da API, depois do login completo (senha + 2FA).
- * - "setup", "2fa" e "senha": tokens curtos (5 min) que só servem para a etapa seguinte do login.
+ * - "email" e "senha": tokens curtos (10 min) que só servem para a etapa seguinte do login.
  * Todos levam a "versão" da conta: trocar a senha, sair ou redefinir o 2FA derruba os tokens antigos.
  */
 @Service
 public class JwtService {
 
     public static final String ACESSO = "acesso";
-    public static final String CONFIGURAR_2FA = "setup";
-    public static final String CODIGO_2FA = "2fa";
+    /** Etapa do código por e-mail (cadastrar/confirmar o e-mail na primeira vez, ou digitar o código recebido). */
+    public static final String CODIGO_EMAIL = "email";
     public static final String TROCAR_SENHA = "senha";
 
-    private static final long DESAFIO_MS = 5 * 60 * 1000;
+    private static final long DESAFIO_MS = 10 * 60 * 1000;
 
     private final Segredos segredos;
     private final long expiracaoMs;

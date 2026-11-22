@@ -46,13 +46,13 @@ Segurança foi tratada como requisito, não como detalhe:
 
 | Camada | O que o SmartStock faz |
 |--------|------------------------|
-| **Login** | Senha + **código do app autenticador (2FA)** para todas as contas; QR code no primeiro acesso e 8 códigos de recuperação de uso único |
+| **Login** | Senha + **código de 6 dígitos enviado por e-mail (2FA)** para todas as contas, sem precisar instalar nenhum app; o código vale 10 minutos e uma única vez, e o e-mail é confirmado no primeiro acesso |
 | **Senhas** | Guardadas só como *hash* BCrypt (ninguém, nem o administrador, consegue vê-las); política de senha forte; **troca obrigatória** das senhas de exemplo e das definidas pelo administrador |
-| **Ataques de força bruta** | 5 tentativas erradas (senha, 2FA ou senha do administrador) bloqueiam por 15 minutos |
+| **Ataques de força bruta** | 5 tentativas erradas (senha, código do e-mail ou senha do administrador) bloqueiam por 15 minutos; um código novo só pode ser pedido a cada 60 s |
 | **Sessões** | Token JWT assinado, válido por 8 h e **revogável**: "Sair", troca de senha ou redefinição do 2FA derrubam todas as sessões da conta |
 | **Permissões** | Conferidas **no servidor, em cada rota** da API, por perfil e por aba (esconder o menu não basta) |
-| **Dados em trânsito** | HTTPS no servidor público e conexão com o banco por TLS **verificando o certificado** do Supabase |
-| **Dados guardados** | Segredos do 2FA cifrados (AES-256-GCM); banco fechado para a API pública do Supabase (RLS); fotos de conversas e arquivos de projetos em armazenamento **privado** |
+| **Dados em trânsito** | HTTPS no servidor público; conexão com o banco e com o servidor de e-mail por TLS **verificando o certificado** |
+| **Dados guardados** | Códigos do e-mail guardados só como "impressão digital" (HMAC-SHA256), nunca o código em si; banco fechado para a API pública do Supabase (RLS); fotos de conversas e arquivos de projetos em armazenamento **privado** |
 | **Arquivos enviados** | Tipo conferido pelo conteúdo (não só pela extensão) e tamanho limitado |
 | **Segredos** | Nenhuma senha ou chave no código: tudo no `.env`, fora do Git |
 | **Auditoria** | Registro de eventos de segurança (logins, falhas, bloqueios, 2FA, trocas de senha) com data, conta e IP, visível ao administrador |
@@ -88,8 +88,8 @@ npm install
 npm run dev
 ```
 
-5) Abra **http://localhost:5173** e entre. Num banco novo, use `admin` / `admin123`: o sistema pede para configurar o
-app autenticador e trocar a senha. Num banco já usado, entre com a sua senha e o código do app. A documentação da API fica em **http://localhost:8080/swagger-ui.html**.
+5) Abra **http://localhost:5173** e entre. Num banco novo, use `admin` / `admin123`: o sistema pede o seu e-mail, manda um
+código para ele e depois pede para trocar a senha. Nos próximos logins: senha + código que chega no e-mail. A documentação da API fica em **http://localhost:8080/swagger-ui.html**.
 
 Sem internet ou só para experimentar, sem `.env`: `java -jar target\backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=h2`
 (banco em memória, volta aos dados de exemplo a cada reinício).
@@ -199,15 +199,28 @@ cd SmartStock
 **Antes da primeira vez: o arquivo `.env`.** O backend usa três segredos que não ficam no código, porque o repositório
 é público: a **senha do banco** (*Project Settings › Database*), a **chave secreta** do projeto (*Project Settings ›
 API Keys › Secret keys*, começa com `sb_secret_`), usada para guardar fotos e arquivos no Supabase Storage, e o
-**`SMARTSTOCK_SECRET`**, um segredo aleatório do próprio sistema que assina os logins e cifra os dados do 2FA (o
+**`SMARTSTOCK_SECRET`**, um segredo aleatório do próprio sistema que assina os logins e protege os códigos do 2FA (o
 `.env.example` mostra o comando para gerar). Copie `backend/.env.example` para `backend/.env` e preencha os três. O
-`.env` é ignorado pelo git. A conexão com
+`.env` é ignorado pelo git.
+
+**E-mail que envia os códigos de login (`MAIL_USUARIO` e `MAIL_SENHA`).** Use uma conta Gmail (pode ser uma criada só
+para o sistema, ex.: `smartstock.dda@gmail.com`):
+
+1. Entre na conta Google e ative a **Verificação em duas etapas** (*myaccount.google.com › Segurança*) — o Google só
+   libera o passo seguinte com ela ligada.
+2. Abra **https://myaccount.google.com/apppasswords**, crie uma senha de app com o nome `SmartStock` e copie as
+   16 letras que aparecem.
+3. No `backend/.env`: `MAIL_USUARIO=smartstock.dda@gmail.com` e `MAIL_SENHA=as 16 letras` (os espaços podem ficar).
+
+Se essas duas linhas ficarem vazias, o sistema roda em **modo de teste**: o código do login aparece no terminal do
+backend (linha `[MODO DE TESTE] Código de login...`) em vez de ir por e-mail. Outros provedores funcionam trocando
+`MAIL_HOST` e `MAIL_PORTA` (Outlook: `smtp-mail.outlook.com`, `587`). A conexão com
 o banco é pelo *Session pooler* (`aws-0-us-east-2.pooler.supabase.com`, usuário `postgres.brlmkluxhgeaavzaojis`).
 
 ```powershell
 cd backend
 copy .env.example .env      # macOS/Linux: cp .env.example .env
-notepad .env                # preencha SUPABASE_DB_PASSWORD, SMARTSTOCK_SECRET e SUPABASE_SERVICE_KEY
+notepad .env                # preencha SUPABASE_DB_PASSWORD, SMARTSTOCK_SECRET, SUPABASE_SERVICE_KEY, MAIL_USUARIO e MAIL_SENHA
 ```
 
 **Recomendado: conexão verificada com o banco.** Baixe o certificado do Supabase em *Database Settings › SSL
@@ -268,10 +281,12 @@ Acesse **http://localhost:5173** e entre com uma das contas da próxima seção.
 
 ## 5. Entrando no sistema
 
-O login tem **duas etapas para todas as contas**: a senha e um código de 6 dígitos do **app autenticador** no celular
-(Google Authenticator, Microsoft Authenticator ou Authy). No primeiro login de cada conta o sistema mostra um QR code
-para configurar o app e entrega **8 códigos de recuperação** (cada um vale uma vez, para quando a pessoa estiver sem o
-celular). Quem perder o celular e os códigos pede ao administrador para **Redefinir 2FA** na aba Usuários.
+O login tem **duas etapas para todas as contas**: a senha e um **código de 6 dígitos enviado para o e-mail** da conta
+(não precisa instalar nenhum app). No primeiro login, se a conta ainda não tiver e-mail, o sistema pede o e-mail e manda
+um código para ele: digitar o código confirma que o e-mail é mesmo da pessoa. O código vale 10 minutos e só uma vez; se
+não chegar, há o botão **Enviar outro código** (a cada 60 s) — confira também o spam. O administrador pode já definir o
+e-mail ao criar a conta, trocar o e-mail ou usar **Redefinir 2FA** (apaga o e-mail; a pessoa cadastra outro no próximo
+login) na aba Usuários.
 
 Contas de demonstração, criadas automaticamente (no primeiro login **a troca da senha é obrigatória**: as senhas abaixo
 são públicas e deixam de funcionar):
@@ -341,10 +356,11 @@ Aguardando início → Em produção → Em estoque → Pronto para entrega ─�
   403 da API e nem veem a aba no menu.
 
 **Segurança**
-- **2FA obrigatório** (TOTP, padrão dos apps autenticadores) com QR code gerado pelo próprio backend, códigos de
-  recuperação de uso único e proteção contra reuso do mesmo código. O segredo de cada conta fica **cifrado** no banco
-  (AES-256-GCM) com a chave do servidor.
-- **Login em etapas** com tokens curtos (5 min) entre uma etapa e outra: o token de acesso só sai depois da senha, do
+- **2FA obrigatório por e-mail**: código aleatório de 6 dígitos, válido por 10 minutos e uma única vez, enviado pelo
+  próprio backend (SMTP com TLS e certificado conferido, sem bibliotecas extras). O banco guarda só a impressão digital
+  do código (HMAC-SHA256 com a chave do servidor); 5 erros cancelam o código; reenvio no máximo a cada 60 s. O e-mail é
+  confirmado no primeiro login (ou definido pelo administrador) e só o administrador pode trocá-lo depois.
+- **Login em etapas** com tokens curtos (10 min) entre uma etapa e outra: o token de acesso só sai depois da senha, do
   2FA e da troca de senha (quando exigida). O login vale 8 horas; **Sair** derruba todas as sessões da conta, e trocar a
   senha ou redefinir o 2FA também.
 - **Limite de tentativas**: 5 erros seguidos de senha, de código do 2FA ou da senha do administrador bloqueiam aquela
@@ -422,7 +438,7 @@ SmartStock/
 │       │   └── exception/           Tratamento de erros
 │       └── resources/
 │           ├── application.properties   Configurações
-│           ├── db/migration/            Migrations do banco (Flyway): V1 esquema inicial, V2 segurança/2FA
+│           ├── db/migration/            Migrations do banco (Flyway): V1 esquema inicial, V2 segurança, V3 2FA por e-mail
 │           ├── static/openapi.yaml      Documentação da API com exemplos (aberta em /swagger-ui.html)
 │           └── seed-images/             Fotos dos dados de exemplo (+ CREDITOS.md)
 └── frontend/                        Interface (React 19 + Vite)
@@ -454,10 +470,10 @@ login em `POST /api/auth/login` (botão *Try it out*), siga as etapas do 2FA, co
 # 1) usuário e senha -> devolve a próxima etapa e um "desafio" (vale 5 minutos)
 curl -s -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" \
      -d '{"username":"admin","senha":"SUA_SENHA"}'
-# {"etapa":"CODIGO_2FA","desafio":"eyJ...","token":null,...}
+# {"etapa":"CODIGO_EMAIL","desafio":"eyJ...","emailMascarado":"re*******@gmail.com",...}  (o código foi para o e-mail)
 
-# 2) código de 6 dígitos do app autenticador -> devolve o token de acesso (vale 8 horas)
-curl -s -X POST http://localhost:8080/api/auth/2fa/verificar -H "Content-Type: application/json" \
+# 2) código de 6 dígitos que chegou no e-mail -> devolve o token de acesso (vale 8 horas)
+curl -s -X POST http://localhost:8080/api/auth/email/verificar -H "Content-Type: application/json" \
      -d '{"desafio":"eyJ...","codigo":"123456"}'
 # {"etapa":"CONCLUIDO","token":"eyJ...","username":"admin","role":"ADMIN",...}
 
@@ -470,7 +486,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X DELETE http://localhost:8080/api/for
 
 | Módulo | Rotas principais | Permissão |
 |--------|------------------|-----------|
-| Login | `POST /auth/login`, `/auth/2fa/configurar`, `/auth/2fa/ativar`, `/auth/2fa/verificar`, `/auth/trocar-senha` (etapas, com o token curto `desafio`); `POST /auth/sair` | pública / conta logada |
+| Login | `POST /auth/login`, `/auth/email/cadastrar`, `/auth/email/verificar`, `/auth/email/reenviar`, `/auth/trocar-senha` (etapas, com o token curto `desafio`); `POST /auth/sair` | pública / conta logada |
 | Painel | `GET /dashboard` | conta logada |
 | Pastilhas | `GET/POST /pastilhas`, `PUT/DELETE /pastilhas/{id}`, `POST/DELETE /pastilhas/{id}/imagem`, `GET /pastilhas/alertas` | leitura: Estoque, Movimentações, Progresso ou Fornecedores; escrita: Estoque |
 | Movimentações | `GET /movimentacoes`, `POST /movimentacoes/entrada`, `/entrada/lote`, `/saida` | Movimentações |
@@ -492,7 +508,8 @@ console em `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:smartstock`
 |-------|----------------|
 | `server.port` | Porta do servidor (padrão 8080) |
 | `spring.datasource.*` | Conexão com o Supabase. A senha vem de `SUPABASE_DB_PASSWORD` (arquivo `backend/.env` ou variável de ambiente); endereço e usuário podem ser trocados com `SUPABASE_DB_URL` e `SUPABASE_DB_USER` |
-| `app.seguranca.segredo` | Vem de `SMARTSTOCK_SECRET` (`.env`): assina os logins e cifra os segredos do 2FA. Se mudar, todos entram de novo e reconfiguram o 2FA |
+| `app.seguranca.segredo` | Vem de `SMARTSTOCK_SECRET` (`.env`): assina os logins e protege os códigos do 2FA. Se mudar, todos precisam entrar de novo |
+| `app.email.*` | Envio do código de login: `MAIL_USUARIO` e `MAIL_SENHA` (`.env`; senha de app do Gmail); servidor em `MAIL_HOST`/`MAIL_PORTA` (padrão `smtp.gmail.com:465`). Vazio = modo de teste (código no terminal) |
 | `jwt.expiration-ms` | Validade do login (padrão 8 h) |
 | `app.cors.origens` | Endereços do frontend que podem chamar a API (`CORS_ORIGENS`; padrão `http://localhost:5173`) |
 | `app.supabase.db-ca` | Certificado do Supabase para a conexão verificada (padrão `supabase-ca.crt`, na pasta `backend`) |
@@ -524,8 +541,9 @@ estão em [CREDITOS.md](backend/src/main/resources/seed-images/CREDITOS.md).
 | `Connection refused`, `timeout` ou `UnknownHost` ao iniciar | Sem internet ou projeto do Supabase pausado (o plano gratuito pausa após dias sem uso: entre no painel e clique em *Restore*). |
 | Dados que eu cadastrei sumiram | Confira se o backend não foi iniciado com o perfil `h2` (banco em memória). |
 | `Defina SMARTSTOCK_SECRET no arquivo backend/.env` | Gere um segredo com o comando do `.env.example` e coloque na linha `SMARTSTOCK_SECRET=` do `.env`. |
-| "Código incorreto" no 2FA com o código certo | Acerte o relógio do celular (data e hora automáticas). O código muda a cada 30 s e cada um só vale uma vez. |
-| Perdi o celular | Use um código de recuperação no login; sem eles, peça ao administrador para **Redefinir 2FA** em *Usuários*. |
+| O código não chega no e-mail | Confira o spam e use **Enviar outro código**. No terminal do backend, `Falha ao enviar e-mail` mostra o motivo (`535` = `MAIL_USUARIO`/`MAIL_SENHA` errados: use a **senha de app**, não a senha normal do Gmail). Sem essas linhas no `.env`, o código está no próprio terminal (modo de teste). |
+| "Código incorreto" com o código certo | Use o código do **último** e-mail (pedir outro cancela o anterior). Depois de 5 erros o código é cancelado: peça outro. |
+| Perdi o acesso ao meu e-mail | Peça ao administrador para trocar o e-mail ou **Redefinir 2FA** em *Usuários*. |
 | "Muitas tentativas erradas" | 5 erros seguidos bloqueiam por 15 minutos. Espere ou reinicie o backend. |
 | A tela abre, mas tudo pede login de novo | O login vale 8 h e "Sair" encerra todas as sessões da conta. Entre de novo. |
 | `Could not resolve placeholder 'SUPABASE_SERVICE_KEY'` | Falta a linha `SUPABASE_SERVICE_KEY=...` no `backend/.env` (veja o `.env.example`). |

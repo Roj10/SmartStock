@@ -1,17 +1,18 @@
 /*
  * Em palavras simples: Tela de login, em etapas, conversando com o backend:
  * 1) usuário e senha;
- * 2) na primeira vez: QR code para cadastrar o app autenticador, primeiro código e os códigos de recuperação;
- *    nas outras vezes: só o código de 6 dígitos do app (ou um código de recuperação);
+ * 2) código de 6 dígitos enviado para o e-mail da conta (verificação em duas etapas, ou 2FA).
+ *    Na primeira vez, antes, a pessoa informa o e-mail; o código que chega nele confirma que o e-mail é dela;
  * 3) troca de senha, quando a conta usa senha de exemplo ou definida pelo administrador.
- * Cada etapa usa um "desafio" (passe temporário de 5 minutos); o acesso só é liberado no fim.
+ * Cada etapa usa um "desafio" (passe temporário de 10 minutos); o acesso só é liberado no fim.
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
-// Login em etapas: senha → 2FA (configurar o app na primeira vez, ou digitar o código) → troca de senha (se exigida).
+const ESPERA_REENVIO = 60; // segundos entre um envio de código e outro (o servidor também confere)
+
 export default function Login() {
   const { concluirLogin } = useAuth();
   const navigate = useNavigate();
@@ -20,21 +21,30 @@ export default function Login() {
   const [senha, setSenha] = useState('');
   const [desafio, setDesafio] = useState('');
   const [nome, setNome] = useState('');
-  const [config, setConfig] = useState(null);
+  const [email, setEmail] = useState('');
+  const [emailMascarado, setEmailMascarado] = useState('');
+  const [modoTeste, setModoTeste] = useState(false);
+  const [primeiraVez, setPrimeiraVez] = useState(false);
   const [codigo, setCodigo] = useState('');
-  const [usarRecuperacao, setUsarRecuperacao] = useState(false);
-  const [codigosRecuperacao, setCodigosRecuperacao] = useState([]);
-  const [respostaPendente, setRespostaPendente] = useState(null);
+  const [espera, setEspera] = useState(0);
+  const [aviso, setAviso] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // contagem regressiva do botão "Enviar outro código"
+  useEffect(() => {
+    if (espera <= 0) return undefined;
+    const t = setTimeout(() => setEspera((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [espera]);
+
   function recomecar(mensagem) {
     setEtapa('CREDENCIAIS');
     setSenha('');
     setCodigo('');
-    setConfig(null);
+    setAviso('');
     setError(mensagem ?? '');
   }
 
@@ -42,7 +52,7 @@ export default function Login() {
     const status = err.response?.status;
     const msg = err.response?.data?.message;
     if (!err.response) return setError('Não foi possível conectar ao servidor.');
-    // etapa vencida (5 minutos) ou senha errada: volta ao início
+    // etapa vencida (10 minutos): volta ao início
     if (status === 401 && etapa !== 'CREDENCIAIS') return recomecar(msg ?? 'A etapa de login expirou. Entre de novo.');
     setError(msg ?? 'Não foi possível concluir. Tente de novo.');
   }
@@ -53,33 +63,21 @@ export default function Login() {
     setCodigo('');
     setDesafio(resp.desafio ?? '');
     if (resp.nome) setNome(resp.nome);
-    if (resp.codigosRecuperacao?.length) {
-      // 2FA recém-ativado: mostra os códigos de recuperação antes de seguir
-      setCodigosRecuperacao(resp.codigosRecuperacao);
-      setRespostaPendente({ ...resp, codigosRecuperacao: null });
-      setEtapa('RECUPERACAO');
-      return;
-    }
+    setModoTeste(!!resp.modoTeste);
     if (resp.etapa === 'CONCLUIDO') {
       concluirLogin(resp);
       navigate('/');
       return;
     }
+    if (resp.etapa === 'CODIGO_EMAIL') {
+      setEmailMascarado(resp.emailMascarado ?? '');
+      setEspera(ESPERA_REENVIO);
+    }
     setEtapa(resp.etapa);
   }
 
-  // Na etapa de configuração, busca o QR code assim que ela aparece
-  useEffect(() => {
-    if (etapa !== 'CONFIGURAR_2FA' || config || !desafio) return;
-    api
-      .post('/auth/2fa/configurar', { desafio })
-      .then(({ data }) => setConfig(data))
-      .catch(tratarErro);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [etapa, desafio]);
-
   async function enviar(e, fn) {
-    e.preventDefault();
+    e?.preventDefault();
     setError('');
     setLoading(true);
     try {
@@ -95,21 +93,29 @@ export default function Login() {
     enviar(e, async () => {
       const { data } = await api.post('/auth/login', { username, senha });
       setSenha('');
-      setConfig(null);
-      setUsarRecuperacao(false);
+      setAviso('');
+      setPrimeiraVez(data.etapa === 'CADASTRAR_EMAIL');
       seguir(data);
     });
 
-  const ativar = (e) =>
+  const cadastrarEmail = (e) =>
     enviar(e, async () => {
-      const { data } = await api.post('/auth/2fa/ativar', { desafio, codigo });
+      const { data } = await api.post('/auth/email/cadastrar', { desafio, email });
+      setAviso('');
       seguir(data);
     });
 
   const verificar = (e) =>
     enviar(e, async () => {
-      const { data } = await api.post('/auth/2fa/verificar', { desafio, codigo });
+      const { data } = await api.post('/auth/email/verificar', { desafio, codigo });
       seguir(data);
+    });
+
+  const reenviar = () =>
+    enviar(null, async () => {
+      const { data } = await api.post('/auth/email/reenviar', { desafio });
+      seguir(data);
+      setAviso('Enviamos um código novo. O anterior não vale mais.');
     });
 
   const trocarSenha = (e) =>
@@ -121,39 +127,9 @@ export default function Login() {
       seguir(data);
     });
 
-  function baixarCodigos() {
-    const texto =
-      `SmartStock - códigos de recuperação do 2FA (${username})\n` +
-      'Cada código funciona uma única vez, se você não tiver o celular.\n\n' +
-      codigosRecuperacao.join('\n') +
-      '\n';
-    const url = URL.createObjectURL(new Blob([texto], { type: 'text/plain' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `smartstock-recuperacao-${username}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  const campoCodigo = (
-    <label>
-      {usarRecuperacao ? 'Código de recuperação' : 'Código de 6 dígitos do app'}
-      <input
-        className="input-codigo"
-        value={codigo}
-        onChange={(e) => setCodigo(usarRecuperacao ? e.target.value : e.target.value.replace(/\D/g, '').slice(0, 6))}
-        inputMode={usarRecuperacao ? 'text' : 'numeric'}
-        autoComplete="one-time-code"
-        placeholder={usarRecuperacao ? 'xxxx-xxxx' : '000000'}
-        required
-        autoFocus
-      />
-    </label>
-  );
-
   return (
     <div className="login-screen">
-      <div className={'login-card' + (etapa === 'CONFIGURAR_2FA' || etapa === 'RECUPERACAO' ? ' login-card-largo' : '')}>
+      <div className="login-card">
         <div className="brand brand-center">
           <span className="brand-mark">SS</span>
           <div>
@@ -185,35 +161,29 @@ export default function Login() {
           </form>
         )}
 
-        {etapa === 'CONFIGURAR_2FA' && (
-          <form onSubmit={ativar} className="form">
-            <h2 className="login-titulo">Proteja sua conta com o 2FA</h2>
+        {etapa === 'CADASTRAR_EMAIL' && (
+          <form onSubmit={cadastrarEmail} className="form">
+            <h2 className="login-titulo">Proteja sua conta</h2>
             <p className="login-texto">
-              {nome ? `${nome}, a` : 'A'} partir de agora o login pede, além da senha, um código do seu celular.
+              {nome ? `${nome}, a` : 'A'} partir de agora, além da senha, cada login pede um código de 6 dígitos enviado
+              para o seu e-mail. Assim, mesmo que alguém descubra a sua senha, não consegue entrar.
             </p>
-            <ol className="login-passos">
-              <li>
-                Instale um app autenticador: <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong>{' '}
-                ou <strong>Authy</strong>.
-              </li>
-              <li>No app, toque em “+” e escaneie o QR code abaixo.</li>
-              <li>Digite o código de 6 dígitos que aparecer no app.</li>
-            </ol>
-            <div className="qr-2fa">
-              {config ? <img src={config.qrCode} alt="QR code para configurar o app autenticador" /> : <span>Gerando QR code...</span>}
-            </div>
-            {config && (
-              <details className="chave-2fa">
-                <summary>Não consegue escanear? Digite a chave no app</summary>
-                <p>
-                  Conta: <strong>{config.conta}</strong> · Chave: <code>{config.chave}</code> · Tipo: baseado em tempo
-                </p>
-              </details>
-            )}
-            {campoCodigo}
+            <label>
+              Seu e-mail
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="voce@gmail.com"
+                maxLength={254}
+                required
+                autoFocus
+              />
+            </label>
             {error && <div className="alert alert-error">{error}</div>}
-            <button className="btn btn-primary" type="submit" disabled={loading || !config}>
-              {loading ? 'Confirmando...' : 'Ativar e continuar'}
+            <button className="btn btn-primary" type="submit" disabled={loading}>
+              {loading ? 'Enviando...' : 'Enviar código'}
             </button>
             <button type="button" className="btn-link" onClick={() => recomecar()}>
               Cancelar
@@ -221,69 +191,52 @@ export default function Login() {
           </form>
         )}
 
-        {etapa === 'RECUPERACAO' && (
-          <div className="form">
-            <h2 className="login-titulo">Guarde seus códigos de recuperação</h2>
-            <p className="login-texto">
-              Se você perder ou trocar de celular, use um destes códigos no lugar do código do app. Cada um funciona{' '}
-              <strong>uma única vez</strong>. Eles não serão mostrados de novo.
-            </p>
-            <ul className="codigos-recuperacao">
-              {codigosRecuperacao.map((c) => (
-                <li key={c}>
-                  <code>{c}</code>
-                </li>
-              ))}
-            </ul>
-            <div className="form-actions form-actions-esquerda">
-              <button type="button" className="btn btn-ghost" onClick={baixarCodigos}>
-                Baixar .txt
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => navigator.clipboard?.writeText(codigosRecuperacao.join('\n'))}
-              >
-                Copiar
-              </button>
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                setCodigosRecuperacao([]);
-                seguir(respostaPendente);
-              }}
-            >
-              Já guardei, continuar
-            </button>
-          </div>
-        )}
-
-        {etapa === 'CODIGO_2FA' && (
+        {etapa === 'CODIGO_EMAIL' && (
           <form onSubmit={verificar} className="form">
             <h2 className="login-titulo">Verificação em duas etapas</h2>
             <p className="login-texto">
-              {usarRecuperacao
-                ? 'Digite um dos códigos de recuperação que você guardou ao ativar o 2FA.'
-                : 'Abra o app autenticador no celular e digite o código do SmartStock.'}
+              Enviamos um código de 6 dígitos para <strong>{emailMascarado}</strong>. Ele vale por 10 minutos. Se não
+              aparecer, confira a caixa de spam.
             </p>
-            {campoCodigo}
+            {modoTeste && (
+              <div className="alert alert-info">
+                Modo de teste: o e-mail não está configurado no servidor, então o código aparece no terminal do backend.
+              </div>
+            )}
+            <label>
+              Código
+              <input
+                className="input-codigo"
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="000000"
+                required
+                autoFocus
+              />
+            </label>
+            {aviso && !error && <div className="alert alert-info">{aviso}</div>}
             {error && <div className="alert alert-error">{error}</div>}
-            <button className="btn btn-primary" type="submit" disabled={loading}>
+            <button className="btn btn-primary" type="submit" disabled={loading || codigo.length !== 6}>
               {loading ? 'Verificando...' : 'Verificar'}
             </button>
-            <button
-              type="button"
-              className="btn-link"
-              onClick={() => {
-                setUsarRecuperacao((v) => !v);
-                setCodigo('');
-                setError('');
-              }}
-            >
-              {usarRecuperacao ? 'Usar o código do app' : 'Estou sem o celular: usar código de recuperação'}
+            <button type="button" className="btn-link" onClick={reenviar} disabled={loading || espera > 0}>
+              {espera > 0 ? `Enviar outro código (em ${espera}s)` : 'Enviar outro código'}
             </button>
+            {primeiraVez && (
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => {
+                  setError('');
+                  setAviso('');
+                  setEtapa('CADASTRAR_EMAIL');
+                }}
+              >
+                Digitei o e-mail errado
+              </button>
+            )}
             <button type="button" className="btn-link" onClick={() => recomecar()}>
               Voltar
             </button>

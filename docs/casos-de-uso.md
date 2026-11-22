@@ -6,7 +6,7 @@
 |------|--------|------------------|
 | **Administrador** | Dono/gestor da metalúrgica | Tudo: contas, permissões, segurança e todas as abas; sua senha autoriza editar/excluir projetos |
 | **Operador** | Funcionário de um setor (produção, almoxarifado, compras, financeiro) | Só as abas liberadas para a conta dele |
-| **Aplicativo autenticador** | Google Authenticator, Microsoft Authenticator etc. (ator externo) | Gera o código de 6 dígitos do 2FA |
+| **Serviço de e-mail** | Gmail (ator externo) | Entrega à caixa de entrada da pessoa o código de 6 dígitos do 2FA |
 | **Supabase** | Serviço de nuvem (ator externo) | Guarda o banco de dados e os arquivos |
 
 ## Diagrama de casos de uso
@@ -15,7 +15,7 @@
 flowchart LR
     adm(["👤 Administrador"])
     op(["👤 Operador"])
-    app(["📱 App autenticador"])
+    app(["📧 Serviço de e-mail"])
 
     subgraph SmartStock
         uc1([UC01 Entrar com senha e 2FA])
@@ -48,26 +48,27 @@ flowchart LR
 
 ### UC01 – Entrar com senha e 2FA
 
-- **Atores:** Administrador ou Operador; App autenticador.
+- **Atores:** Administrador ou Operador; Serviço de e-mail.
 - **Pré-condição:** a conta existe.
 - **Fluxo principal:**
   1. O usuário informa usuário e senha.
-  2. O sistema confere a senha e pede o código de 6 dígitos do app.
-  3. O usuário abre o app e digita o código.
+  2. O sistema confere a senha, envia um código de 6 dígitos para o e-mail da conta e pede esse código.
+  3. O usuário abre o e-mail e digita o código.
   4. O sistema confere o código e libera o acesso às abas permitidas por 8 horas.
 - **Fluxos alternativos:**
-  - *2a. Primeira entrada:* o sistema mostra um QR code; o usuário lê com o app, digita o primeiro código, recebe 8
-    códigos de recuperação e é obrigado a trocar a senha de exemplo.
-  - *3a. Celular perdido:* o usuário digita um código de recuperação (cada um vale uma vez).
-  - *1a/3b. Erro:* senha ou código errado mostram aviso; após 5 erros seguidos, a conta fica bloqueada por 15 minutos.
+  - *2a. Primeira entrada (conta sem e-mail):* o sistema pede o e-mail, envia o código para ele e, quando o código é
+    digitado, passa a usar esse e-mail. Se a senha for de exemplo, o usuário é obrigado a trocá-la.
+  - *3a. Código não chegou:* o usuário pede outro código (no máximo um por minuto); o anterior deixa de valer.
+  - *3b. Perdeu o acesso ao e-mail:* o administrador troca o e-mail da conta ou redefine o 2FA.
+  - *1a/3c. Erro:* senha ou código errado mostram aviso; após 5 erros seguidos, a conta fica bloqueada por 15 minutos.
 - **Pós-condição:** evento registrado em *Segurança*.
 
 ### UC02 – Gerenciar contas e permissões
 
 - **Ator:** Administrador (ou Operador com a aba Usuários).
-- **Fluxo principal:** o administrador cria a conta com nome, usuário, senha provisória, perfil e abas permitidas; a
-  pessoa troca a senha e configura o 2FA no primeiro acesso.
-- **Alternativos:** editar (se trocar a senha, as sessões da pessoa são encerradas); redefinir 2FA; excluir.
+- **Fluxo principal:** o administrador cria a conta com nome, usuário, senha provisória, perfil, abas permitidas e,
+  opcionalmente, o e-mail; a pessoa troca a senha no primeiro acesso (e confirma o e-mail, se ele não foi informado).
+- **Alternativos:** editar (trocar a senha ou o e-mail encerra as sessões da pessoa); redefinir 2FA; excluir.
 - **Regras:** não é possível excluir a própria conta nem o único administrador; um Operador só concede abas que ele tem.
 
 ### UC05 – Registrar entrada/saída de estoque

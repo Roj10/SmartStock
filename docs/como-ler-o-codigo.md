@@ -39,9 +39,11 @@ clique. Cada arquivo do código começa com um comentário **"Em palavras simple
 | **API** | O conjunto de endereços (`/api/...`) pelos quais as telas pedem e enviam dados ao backend |
 | **JSON** | O formato de texto dos dados trocados: `{"nome": "Aço Sul", "tipo": "FORNECEDOR"}` |
 | **Token / JWT** | O "crachá digital" que o login entrega. Vale 8 horas e vai junto em cada pedido |
-| **2FA / TOTP** | Verificação em duas etapas: além da senha, o código de 6 dígitos do app do celular, que muda a cada 30 s |
+| **2FA** | Verificação em duas etapas: além da senha, um código de 6 dígitos enviado para o e-mail da pessoa, que vale 10 minutos e uma vez só |
+| **SMTP** | A "língua" que os programas usam para enviar e-mails; o backend fala SMTP com o Gmail para mandar o código |
+| **HMAC** | Uma "impressão digital" de um dado feita com uma chave secreta: o banco guarda a impressão do código, não o código |
 | **Hash (BCrypt)** | A senha "embaralhada" sem volta. O sistema não sabe a sua senha, só confere se a digitada gera o mesmo hash |
-| **Criptografia (AES, TLS)** | Transformar dados em algo ilegível para quem não tem a chave. TLS é a criptografia da conexão (o cadeado do HTTPS) |
+| **Criptografia (TLS)** | Transformar dados em algo ilegível para quem não tem a chave. TLS é a criptografia da conexão (o cadeado do HTTPS) |
 | **@Transactional** | "Tudo ou nada": várias gravações que só valem se todas derem certo |
 | **@PreAuthorize** | Trava de permissão em uma rota: "só entra quem tem a aba X" |
 | **Migration (Flyway)** | Arquivo SQL numerado que cria ou altera tabelas. Roda uma vez só, em ordem (V1, V2, ...) |
