@@ -613,5 +613,5 @@ o backend sobe sozinho em ~1 minuto, no mesmo endereço. Para publicar uma vers�
 A pasta [docs/](docs/README.md) reúne o material do relatório: descrição comercial, requisitos funcionais e não
 funcionais, casos de uso, diagramas (arquitetura, banco de dados, sequência do login, estados do projeto), o guia de
 implantação na AWS, a avaliação de [usabilidade](docs/usabilidade.md) (heurísticas de Nielsen), o
-[roteiro das telas](docs/telas.md) para os prints, o guia de leitura do código para leigos e a
+[prints das telas](docs/telas.md) com legendas, o guia de leitura do código para leigos e a
 **[documentação OpenAPI](docs/openapi/README.md)** da API.

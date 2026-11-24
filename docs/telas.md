@@ -1,12 +1,15 @@
 # Telas do SmartStock
 
-Roteiro dos prints para o relatório (item *"Proposta de solução (com prints das telas)"*). Salve cada print nesta
-pasta, em `docs/telas/`, com o nome indicado: as imagens aparecem aqui automaticamente (no GitHub e no VS Code) e
-podem ser coladas no relatório com a legenda da tabela.
+Prints das telas para o relatório (item *"Proposta de solução (com prints das telas)"*), já salvos em
+[`docs/telas/`](telas/), com a legenda sugerida para cada um. Para colar no relatório: abra a imagem, copie e cole no
+Word, e use a legenda da tabela.
 
-**Como tirar os prints:** entre em <http://34.199.252.233> (ou `http://localhost:5173`) com a conta `admin`, deixe o
-navegador em tela cheia (F11) e use **Win + Shift + S** › *Retângulo* para capturar só a área do sistema. Depois,
-salve o print (Paint › Colar › Salvar como PNG) com o nome da tabela.
+**Como foram gerados:** prints 1 a 18 e 21 tirados do sistema rodando no computador (`localhost`, perfil de testes com
+os dados de exemplo, mais algumas movimentações e mensagens criadas para a demonstração), em 1440 × 900 (o 21 em tela
+de celular, 390 × 844). O print 3 mostra o e-mail exatamente como o sistema o envia (o mesmo HTML), numa moldura de caixa
+de entrada; o código que aparece nele e no print 2 é de teste e não vale para entrar. Os prints 19 e 20 são do console da
+AWS (instância real e Security Group atual). Para refazer algum, siga a coluna *O que deve aparecer*: entre em
+<http://34.199.252.233> ou `http://localhost:5173` e use **Win + Shift + S** › *Retângulo*.
 
 | # | Arquivo | Tela | O que deve aparecer | Legenda sugerida para o relatório |
 |---|---------|------|---------------------|-----------------------------------|
@@ -37,14 +40,16 @@ salve o print (Paint › Colar › Salvar como PNG) com o nome da tabela.
 
 ## Galeria
 
-As imagens abaixo aparecem assim que os arquivos forem salvos em `docs/telas/`.
-
 | | |
 |-|-|
 | ![Login](telas/01-login.png) | ![Código por e-mail](telas/02-codigo-email.png) |
-| ![Painel](telas/04-painel.png) | ![Estoque](telas/05-estoque.png) |
-| ![Movimentações](telas/07-movimentacoes.png) | ![Fornecedores](telas/09-fornecedores.png) |
-| ![Progresso](telas/10-progresso.png) | ![Novo projeto](telas/11-novo-projeto.png) |
-| ![Calendário](telas/14-calendario.png) | ![Financeiro](telas/15-financeiro.png) |
-| ![Mensagens](telas/16-mensagens.png) | ![Usuários](telas/17-usuarios.png) |
-| ![Swagger](telas/18-swagger.png) | ![AWS EC2](telas/19-aws-ec2.png) |
+| ![E-mail recebido](telas/03-email-recebido.png) | ![Painel](telas/04-painel.png) |
+| ![Estoque](telas/05-estoque.png) | ![Novo item](telas/06-novo-item.png) |
+| ![Movimentações](telas/07-movimentacoes.png) | ![Entrada em lote](telas/08-entrada-lote.png) |
+| ![Fornecedores](telas/09-fornecedores.png) | ![Progresso](telas/10-progresso.png) |
+| ![Novo projeto](telas/11-novo-projeto.png) | ![Senha do administrador](telas/12-senha-admin.png) |
+| ![Enviar pedido](telas/13-enviar-pedido.png) | ![Calendário](telas/14-calendario.png) |
+| ![Financeiro](telas/15-financeiro.png) | ![Mensagens](telas/16-mensagens.png) |
+| ![Usuários](telas/17-usuarios.png) | ![Swagger](telas/18-swagger.png) |
+| ![AWS EC2](telas/19-aws-ec2.png) | ![Security Group](telas/20-security-group.png) |
+| ![Celular](telas/21-celular.png) | |

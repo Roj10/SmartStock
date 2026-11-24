@@ -10,7 +10,7 @@ Material de apoio ao relatório do Projeto Aplicado III (SENAI/SC – Fraiburgo)
 | [Diagramas](diagramas.md) | Arquitetura, banco de dados (ER), sequência do login com 2FA, estados do projeto, implantação |
 | [Implantação na AWS EC2](implantacao-aws-ec2.md) | Passo a passo: instância, Elastic IP, Security Group, SSH, Nginx, systemd, HTTPS |
 | [Usabilidade](usabilidade.md) | As telas avaliadas pelas 10 heurísticas de Nielsen, acessibilidade e uso no celular |
-| [Telas](telas.md) | Roteiro dos prints para o relatório, com legendas, e galeria das telas (`docs/telas/`) |
+| [Telas](telas.md) | Os 21 prints das telas para o relatório (`docs/telas/`), com legendas e galeria |
 | [Como ler o código](como-ler-o-codigo.md) | Guia para leigos: como o sistema se organiza, o caminho de um clique e glossário |
 | [Documentação OpenAPI](openapi/README.md) | Todas as 67 rotas da API com permissões, parâmetros e exemplos reais; especificação [`openapi.yaml`](openapi/openapi.yaml) / [`openapi.json`](openapi/openapi.json) e página interativa [`swagger.html`](openapi/swagger.html) |
 

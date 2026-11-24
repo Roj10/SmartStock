@@ -1,1 +1,1 @@
-Salve aqui os prints das telas, com os nomes listados em ../telas.md.
+Prints das telas do SmartStock para o relatório. Legendas e explicação em ../telas.md.
