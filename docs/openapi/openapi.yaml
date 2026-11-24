@@ -3334,7 +3334,7 @@ paths:
                 nome: Administrador
                 username: admin
                 role: ADMIN
-                permissoes:
+                permissoes: &id001
                 - MOVIMENTACOES
                 - PASTILHAS
                 doisFatoresAtivo: true
@@ -3401,6 +3401,43 @@ paths:
         '422':
           $ref: '#/components/responses/Erro422'
   /api/usuarios/{id}:
+    get:
+      tags:
+      - Usuários
+      summary: Buscar uma conta
+      description: 'Nome, usuário, perfil, abas liberadas, e-mail do 2FA e se há troca de senha pendente. Senha, códigos e
+        segredos nunca saem.
+
+
+        **Quem pode:** Administrador ou Usuários.'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+        description: Número (id) do registro
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              example:
+                id: 1
+                nome: Administrador
+                username: admin
+                role: ADMIN
+                permissoes: *id001
+                doisFatoresAtivo: true
+                trocarSenha: false
+                email: renan@gmail.com
+        '401':
+          $ref: '#/components/responses/Erro401'
+        '403':
+          $ref: '#/components/responses/Erro403'
+        '404':
+          $ref: '#/components/responses/Erro404'
     put:
       tags:
       - Usuários

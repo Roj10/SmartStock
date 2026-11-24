@@ -41,6 +41,12 @@ public class UsuarioController {
         return usuarioService.listar();
     }
 
+    /** Uma conta só (nome, usuário, perfil, abas, e-mail do 2FA). */
+    @GetMapping("/{id}")
+    public Usuario buscar(@PathVariable Long id) {
+        return usuarioService.obter(id);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Usuario criar(@Valid @RequestBody UsuarioRequest request, Authentication authentication) {

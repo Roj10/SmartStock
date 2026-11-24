@@ -7,7 +7,7 @@ Guia passo a passo para colocar o sistema na internet, escrito para quem nunca u
 ```
  Navegador ──HTTPS──▶ Elastic IP (endereço fixo) ──▶ Security Group (firewall da AWS)
                                                        │  22  só do seu IP (SSH, administração)
-                                                       │  80/443 todos (site)
+                                                       │  80 todos (site)  · 443 só com HTTPS
                                                        ▼
                                              EC2 Ubuntu (t3.micro)
                                              ├─ Nginx: entrega as telas e repassa /api
@@ -63,7 +63,7 @@ O Security Group decide quais portas do servidor podem ser acessadas e de onde. 
 |------|-------|--------|---------|
 | SSH | 22 | **Meu IP** | Só você administra o servidor. Nunca use `0.0.0.0/0` aqui |
 | HTTP | 80 | `0.0.0.0/0` e `::/0` | Acesso ao site (e validação do certificado HTTPS) |
-| HTTPS | 443 | `0.0.0.0/0` e `::/0` | Acesso ao site com criptografia |
+| HTTPS | 443 | `0.0.0.0/0` e `::/0` | **Só depois de ativar o HTTPS (passo 8).** Sem certificado nada responde nela: deixar aberta é expor uma porta sem uso |
 
 **Não** crie regra para a porta **8080**: o backend só escuta dentro do servidor e é acessado pelo Nginx. Regras de
 saída: deixe o padrão (tudo liberado), o backend precisa falar com o Supabase.
@@ -182,13 +182,15 @@ um **domínio** apontando para o Elastic IP:
 
 1. Use um domínio próprio (ex.: registro.br) ou um subdomínio gratuito (ex.: [DuckDNS](https://www.duckdns.org/)) e
    crie um registro **A** apontando para o Elastic IP.
-2. No servidor:
+2. No Security Group, adicione a regra **HTTPS (443)** com origem `0.0.0.0/0`. No servidor, libere também no firewall
+   do Ubuntu: `sudo ufw allow 'Nginx HTTPS'`.
+3. No servidor:
    ```bash
    sudo certbot --nginx -d smartstock.seudominio.com.br --redirect -m seu-email@exemplo.com --agree-tos
    ```
    O certbot gera o certificado gratuito (Let's Encrypt), configura o Nginx e passa a redirecionar `http` para `https`.
    A renovação é automática.
-3. Atualize `CORS_ORIGENS=https://smartstock.seudominio.com.br` no `/opt/smartstock/.env` e rode
+4. Atualize `CORS_ORIGENS=https://smartstock.seudominio.com.br` no `/opt/smartstock/.env` e rode
    `sudo systemctl restart smartstock`.
 
 ## 9. Comandos do dia a dia (no servidor)
@@ -225,4 +227,5 @@ um **domínio** apontando para o Elastic IP:
 - [x] Senhas e chaves só em `/opt/smartstock/.env` (`chmod 600`), fora do Git.
 - [x] Firewall do Ubuntu (`ufw`) além do Security Group.
 - [x] Cabeçalhos de segurança no Nginx (CSP, X-Frame-Options, nosniff) e versão do Nginx escondida.
+- [x] Só as portas usadas ficam abertas: 22 (seu IP) e 80; a 443 só com o HTTPS ativo.
 - [ ] HTTPS com certbot (depende de um domínio — passo 8).

@@ -12,7 +12,7 @@ flowchart LR
     end
 
     subgraph AWS["AWS EC2 (Ubuntu) – Elastic IP"]
-        nginx["Nginx<br/>portas 80/443<br/>telas + repasse /api"]
+        nginx["Nginx<br/>porta 80 (443 com HTTPS)<br/>telas + repasse /api"]
         api["Backend Spring Boot<br/>127.0.0.1:8080<br/>regras, login, permissões"]
     end
 
@@ -258,7 +258,7 @@ flowchart TB
     subgraph SG["Security Group"]
         direction TB
         r1["22 (SSH): só o IP do desenvolvedor"]
-        r2["80 e 443: qualquer endereço"]
+        r2["80: qualquer endereço<br/>(443 só com HTTPS ativo)"]
         r3["8080: fechada"]
     end
     subgraph EC2["Instância EC2 – Ubuntu 24.04 – Elastic IP"]

@@ -43,6 +43,12 @@ public class UsuarioService {
         return usuarioRepository.findAll();
     }
 
+    /** Busca uma conta pelo número (id). Senha, segredos e códigos nunca saem na resposta. */
+    @Transactional(readOnly = true)
+    public Usuario obter(Long id) {
+        return buscarPorId(id);
+    }
+
     @Transactional
     public Usuario criar(UsuarioRequest request, String usernameAtor) {
         Usuario ator = buscarPorUsername(usernameAtor);

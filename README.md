@@ -473,7 +473,7 @@ com permissões, parâmetros e exemplos reais; na mesma pasta estão a especific
 
 **Documentação interativa (Swagger):** com o backend rodando, abra **http://localhost:8080/swagger-ui.html** (no
 servidor: **http://34.199.252.233/swagger-ui.html**). Lá estão
-todas as 66 rotas, com descrição, quem pode usar, exemplos de envio e respostas reais. Para testar pela página: faça o
+todas as 67 rotas, com descrição, quem pode usar, exemplos de envio e respostas reais. Para testar pela página: faça o
 login em `POST /api/auth/login` (botão *Try it out*), siga as etapas do 2FA, copie o `token` final, clique em
 **Authorize** e cole. No seletor do topo há também a versão gerada automaticamente do código (*Gerado do codigo*).
 
@@ -508,7 +508,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X DELETE http://localhost:8080/api/for
 | Modelos | `GET/POST /modelos-projeto`, `GET/PUT/DELETE /modelos-projeto/{id}` | Progresso |
 | Financeiro | `GET /financeiro/resumo`, `/pecas`, `/projetos`; `GET/POST /vendas`, `GET/PUT/DELETE /vendas/{id}`, `POST /vendas/{id}/fechar` | Financeiro |
 | Mensagens | `GET /mensagens/contatos`, `/nao-lidas`, `GET/POST /mensagens/conversa/{usuarioId}`, `GET /mensagens/{id}/imagem` | conta logada |
-| Usuários | `GET/POST /usuarios`, `PUT/DELETE /usuarios/{id}`, `POST /usuarios/{id}/redefinir-2fa` (admin); `GET /seguranca/eventos` (admin) | Administrador ou "Usuários" |
+| Usuários | `GET/POST /usuarios`, `GET/PUT/DELETE /usuarios/{id}`, `POST /usuarios/{id}/redefinir-2fa` (admin); `GET /seguranca/eventos` (admin) | Administrador ou "Usuários" |
 
 Para ver os dados: no Supabase, *Table Editor* (escolha o schema `smartstock`) ou *SQL Editor*. No perfil `h2` existe o
 console em `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:smartstock`, usuário `sa`, senha em branco).
@@ -586,7 +586,7 @@ O sistema está publicado numa instância **EC2** do **AWS Academy (Learner Lab)
 particularidades do AWS Academy), está em **[docs/implantacao-aws-ec2.md](docs/implantacao-aws-ec2.md)**. Em resumo:
 
 ```
- Internet ──▶ Elastic IP ──▶ Security Group (22 só do seu IP; 80 e 443 abertas) ──▶ EC2 Ubuntu
+ Internet ──▶ Elastic IP ──▶ Security Group (22 só do seu IP; 80 aberta)        ──▶ EC2 Ubuntu
                                                                                   ├─ Nginx: telas do frontend + repassa /api
                                                                                   └─ backend (systemd) em 127.0.0.1:8080
                                                                                          ├──▶ Supabase (banco + arquivos)
@@ -594,15 +594,16 @@ particularidades do AWS Academy), está em **[docs/implantacao-aws-ec2.md](docs/
 ```
 
 1. Criar a instância EC2 (Ubuntu LTS, `t3.micro`) com um par de chaves (no AWS Academy: `vockey` / `labsuser.pem`) e um
-   Security Group que libera a porta **22 só para o seu IPv4** e as portas **80/443** para todos (a **8080 fica
-   fechada**).
+   Security Group que libera a porta **22 só para o seu IPv4** e a porta **80** para todos. A **8080 fica fechada**
+   e a **443** só é aberta se o HTTPS for ativado (passo 6): nenhuma porta fica exposta sem uso.
 2. Associar um **Elastic IP** (endereço fixo) à instância.
 3. Enviar a pasta `deploy` e o `backend\.env` por `scp`, entrar por SSH e rodar `bash ~/deploy/instalar-ec2.sh`
    (Java 21, Nginx, serviço systemd, firewall).
 4. Instalar o `.env` em `/opt/smartstock/.env` e acrescentar `CORS_ORIGENS=http://SEU_ELASTIC_IP` numa linha própria.
 5. No seu computador, com o backend e o `npm run dev` parados:
    `.\deploy\publicar.ps1 -Servidor SEU_ELASTIC_IP -Chave caminho\da\chave.pem`.
-6. (Opcional) Com um domínio apontando para o Elastic IP: `sudo certbot --nginx -d seu-dominio` para ativar o HTTPS.
+6. (Opcional) Com um domínio apontando para o Elastic IP: abrir a 443 no Security Group e rodar
+   `sudo certbot --nginx -d seu-dominio` para ativar o HTTPS.
 
 **No dia a dia:** quando a sessão do AWS Academy acaba, a instância é desligada; ao clicar em **Start Lab** ela volta e
 o backend sobe sozinho em ~1 minuto, no mesmo endereço. Para publicar uma versão nova, basta repetir o passo 5.
@@ -611,5 +612,6 @@ o backend sobe sozinho em ~1 minuto, no mesmo endereço. Para publicar uma vers�
 
 A pasta [docs/](docs/README.md) reúne o material do relatório: descrição comercial, requisitos funcionais e não
 funcionais, casos de uso, diagramas (arquitetura, banco de dados, sequência do login, estados do projeto), o guia de
-implantação na AWS, o guia de leitura do código para leigos e a **[documentação OpenAPI](docs/openapi/README.md)**
-da API.
+implantação na AWS, a avaliação de [usabilidade](docs/usabilidade.md) (heurísticas de Nielsen), o
+[roteiro das telas](docs/telas.md) para os prints, o guia de leitura do código para leigos e a
+**[documentação OpenAPI](docs/openapi/README.md)** da API.

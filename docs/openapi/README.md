@@ -20,7 +20,7 @@ Com o sistema rodando, a mesma documentação fica em **`/swagger-ui.html`** (ex
 | **Versão da API** | 1.0 |
 | **Padrão** | OpenAPI 3.0.3 · REST · JSON (UTF-8) |
 | **Endereço base** | `http://localhost:8080` (computador) · `http://34.199.252.233` (AWS) — todas as rotas começam com `/api` |
-| **Rotas** | 66 operações em 47 endereços |
+| **Rotas** | 67 operações em 47 endereços |
 | **Autenticação** | Token JWT no cabeçalho `Authorization: Bearer <token>` (vale 8 horas), obtido no login em etapas |
 | **Permissões** | Cada rota exige a aba correspondente na conta (Estoque, Movimentações, Progresso, Fornecedores, Financeiro, Usuários) ou perfil Administrador |
 
@@ -222,6 +222,7 @@ Contas, perfis, permissões por aba e e-mail do 2FA; redefinição do 2FA.
 |--------|------|-----------|
 | `GET` | [`/api/usuarios`](#get-apiusuarios) | Listar contas |
 | `POST` | [`/api/usuarios`](#post-apiusuarios) | Criar conta |
+| `GET` | [`/api/usuarios/{id}`](#get-apiusuariosid) | Buscar uma conta |
 | `PUT` | [`/api/usuarios/{id}`](#put-apiusuariosid) | Editar conta (e redefinir senha) |
 | `DELETE` | [`/api/usuarios/{id}`](#delete-apiusuariosid) | Excluir conta |
 | `POST` | [`/api/usuarios/{id}/redefinir-2fa`](#post-apiusuariosidredefinir-2fa) | Redefinir o 2FA (perdeu o acesso ao e-mail) |
@@ -3795,6 +3796,42 @@ Resposta **201** — Criado.
 </details>
 
 Erros possíveis: `400`, `401`, `403`, `422`
+
+#### GET /api/usuarios/{id}
+
+**Buscar uma conta**
+
+Nome, usuário, perfil, abas liberadas, e-mail do 2FA e se há troca de senha pendente. Senha, códigos e segredos nunca saem.
+
+**Quem pode:** Administrador ou Usuários.
+
+| Parâmetro | Onde | Obrigatório | Descrição |
+|-----------|------|-------------|-----------|
+| `id` | caminho | sim | Número (id) do registro |
+
+Resposta **200** — OK.
+
+<details><summary>Exemplo</summary>
+
+```json
+{
+  "id": 1,
+  "nome": "Administrador",
+  "username": "admin",
+  "role": "ADMIN",
+  "permissoes": [
+    "MOVIMENTACOES",
+    "PASTILHAS"
+  ],
+  "doisFatoresAtivo": true,
+  "trocarSenha": false,
+  "email": "renan@gmail.com"
+}
+```
+
+</details>
+
+Erros possíveis: `401`, `403`, `404`
 
 #### PUT /api/usuarios/{id}
 

@@ -9,7 +9,7 @@
 #   2. cria o usuário "smartstock", só para rodar o backend;
 #   3. cria a pasta /opt/smartstock e protege o arquivo .env (só o dono lê);
 #   4. instala o serviço (smartstock.service) e a configuração do Nginx;
-#   5. liga o firewall do Ubuntu deixando passar só SSH (22) e web (80/443).
+#   5. liga o firewall do Ubuntu deixando passar só SSH (22) e web (80). A 443 é liberada ao ativar o HTTPS.
 # Depois disso, envie o backend.jar, o .env e o build do frontend (veja docs/implantacao-aws-ec2.md).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -44,7 +44,7 @@ sudo systemctl reload nginx
 
 echo "== 5/5 Firewall do Ubuntu (além do Security Group da AWS)"
 sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
+sudo ufw allow 'Nginx HTTP'
 sudo ufw --force enable
 
 echo
