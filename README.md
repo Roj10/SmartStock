@@ -16,6 +16,12 @@ planilhas, cadernos e mensagens soltas por um sistema web único, usado pelo nav
 > O sistema nasceu para controlar "pastilhas industriais", por isso o código e uma das abas ainda usam o nome
 > *Pastilhas* para os itens de estoque. Os dados de exemplo mostram materiais variados de uma metalúrgica.
 
+| | |
+|-|-|
+| **Sistema no ar** | <http://34.199.252.233> — AWS EC2 (AWS Academy), disponível enquanto o laboratório estiver ligado |
+| **Documentação da API** | [docs/openapi](docs/openapi/README.md) (OpenAPI 3: referência, `openapi.yaml`/`.json`, página Swagger) · no sistema: `/swagger-ui.html` |
+| **Relatório técnico** | [docs/](docs/README.md) — requisitos, casos de uso, diagramas, descrição comercial, implantação |
+
 ## Por que o SmartStock
 
 ERPs de mercado costumam ser genéricos (feitos para comércio e para qualquer tipo de empresa), cheios de módulos que a
@@ -451,6 +457,7 @@ SmartStock/
         └── index.css, chat.css      Estilos
 ├── deploy/                          Publicação na AWS EC2 (Nginx, serviço systemd, scripts)
 └── docs/                            Relatório: requisitos, casos de uso, diagramas, descrição comercial
+    └── openapi/                     Documentação OpenAPI da API (referência, openapi.yaml/.json, swagger.html)
 ```
 
 ## 10. API (resumo)
@@ -459,7 +466,13 @@ Todas as rotas começam com `/api` e, exceto as do login, exigem o token de aces
 `Authorization: Bearer ...`. Criações respondem **201 Created**, exclusões **204 No Content** e erros vêm sempre no
 formato `{"status": 409, "message": "...", "timestamp": "..."}`.
 
-**Documentação interativa (Swagger):** com o backend rodando, abra **http://localhost:8080/swagger-ui.html**. Lá estão
+**Documentação OpenAPI completa:** [docs/openapi/README.md](docs/openapi/README.md) traz todas as rotas em texto,
+com permissões, parâmetros e exemplos reais; na mesma pasta estão a especificação [`openapi.yaml`](docs/openapi/openapi.yaml)
+/ [`openapi.json`](docs/openapi/openapi.json) (para Postman, Insomnia ou <https://editor.swagger.io>) e a página
+[`swagger.html`](docs/openapi/swagger.html), que abre a documentação interativa sem rodar o sistema.
+
+**Documentação interativa (Swagger):** com o backend rodando, abra **http://localhost:8080/swagger-ui.html** (no
+servidor: **http://34.199.252.233/swagger-ui.html**). Lá estão
 todas as 66 rotas, com descrição, quem pode usar, exemplos de envio e respostas reais. Para testar pela página: faça o
 login em `POST /api/auth/login` (botão *Try it out*), siga as etapas do 2FA, copie o `token` final, clique em
 **Authorize** e cole. No seletor do topo há também a versão gerada automaticamente do código (*Gerado do codigo*).
@@ -467,7 +480,7 @@ login em `POST /api/auth/login` (botão *Try it out*), siga as etapas do 2FA, co
 **Exemplo com `curl`** (login em etapas e um cadastro):
 
 ```bash
-# 1) usuário e senha -> devolve a próxima etapa e um "desafio" (vale 5 minutos)
+# 1) usuário e senha -> devolve a próxima etapa e um "desafio" (vale 10 minutos)
 curl -s -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" \
      -d '{"username":"admin","senha":"SUA_SENHA"}'
 # {"etapa":"CODIGO_EMAIL","desafio":"eyJ...","emailMascarado":"re*******@gmail.com",...}  (o código foi para o e-mail)
@@ -568,26 +581,35 @@ As fotos de exemplo pertencem aos respectivos autores, listados em
 
 ## 14. Publicando na AWS (EC2)
 
-O passo a passo completo, para quem nunca usou a AWS, está em
-**[docs/implantacao-aws-ec2.md](docs/implantacao-aws-ec2.md)**. Em resumo:
+O sistema está publicado numa instância **EC2** do **AWS Academy (Learner Lab)**, região `us-east-1`, com o Elastic IP
+**34.199.252.233** → <http://34.199.252.233>. O passo a passo completo, para quem nunca usou a AWS (incluindo as
+particularidades do AWS Academy), está em **[docs/implantacao-aws-ec2.md](docs/implantacao-aws-ec2.md)**. Em resumo:
 
 ```
- Internet ──▶ Elastic IP ──▶ Security Group (só 22 do seu IP, 80 e 443) ──▶ EC2 Ubuntu
-                                                                            ├─ Nginx: telas do frontend + repassa /api
-                                                                            └─ backend (systemd) em 127.0.0.1:8080
-                                                                                   └──▶ Supabase (banco + arquivos)
+ Internet ──▶ Elastic IP ──▶ Security Group (22 só do seu IP; 80 e 443 abertas) ──▶ EC2 Ubuntu
+                                                                                  ├─ Nginx: telas do frontend + repassa /api
+                                                                                  └─ backend (systemd) em 127.0.0.1:8080
+                                                                                         ├──▶ Supabase (banco + arquivos)
+                                                                                         └──▶ Gmail (código do login)
 ```
 
-1. Criar a instância EC2 (Ubuntu 24.04, `t3.micro`), com um par de chaves SSH (`.pem`) e um Security Group que libera a
-   porta **22 só para o seu IP** e as portas **80/443** para todos (a **8080 fica fechada**).
+1. Criar a instância EC2 (Ubuntu LTS, `t3.micro`) com um par de chaves (no AWS Academy: `vockey` / `labsuser.pem`) e um
+   Security Group que libera a porta **22 só para o seu IPv4** e as portas **80/443** para todos (a **8080 fica
+   fechada**).
 2. Associar um **Elastic IP** (endereço fixo) à instância.
-3. Entrar por SSH, copiar a pasta `deploy` e rodar `bash deploy/instalar-ec2.sh` (Java 21, Nginx, serviço, firewall).
-4. Preencher `/opt/smartstock/.env` no servidor (mesmas chaves do `backend/.env`, mais `CORS_ORIGENS`).
-5. No seu computador: `.\deploy\publicar.ps1 -Servidor SEU_ELASTIC_IP -Chave caminho\da\chave.pem`.
-6. Com um domínio apontando para o Elastic IP: `sudo certbot --nginx -d seu-dominio` para ativar o HTTPS.
+3. Enviar a pasta `deploy` e o `backend\.env` por `scp`, entrar por SSH e rodar `bash ~/deploy/instalar-ec2.sh`
+   (Java 21, Nginx, serviço systemd, firewall).
+4. Instalar o `.env` em `/opt/smartstock/.env` e acrescentar `CORS_ORIGENS=http://SEU_ELASTIC_IP` numa linha própria.
+5. No seu computador, com o backend e o `npm run dev` parados:
+   `.\deploy\publicar.ps1 -Servidor SEU_ELASTIC_IP -Chave caminho\da\chave.pem`.
+6. (Opcional) Com um domínio apontando para o Elastic IP: `sudo certbot --nginx -d seu-dominio` para ativar o HTTPS.
+
+**No dia a dia:** quando a sessão do AWS Academy acaba, a instância é desligada; ao clicar em **Start Lab** ela volta e
+o backend sobe sozinho em ~1 minuto, no mesmo endereço. Para publicar uma versão nova, basta repetir o passo 5.
 
 ## 15. Documentação do projeto (relatório)
 
 A pasta [docs/](docs/README.md) reúne o material do relatório: descrição comercial, requisitos funcionais e não
-funcionais, casos de uso, diagramas (arquitetura, banco de dados, sequência do login, estados do projeto) e o guia de
-implantação na AWS.
+funcionais, casos de uso, diagramas (arquitetura, banco de dados, sequência do login, estados do projeto), o guia de
+implantação na AWS, o guia de leitura do código para leigos e a **[documentação OpenAPI](docs/openapi/README.md)**
+da API.
