@@ -39,3 +39,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Certificado do Supabase (cada computador/servidor baixa o seu; veja o README, passo 4.2) ###
+supabase-ca.crt
