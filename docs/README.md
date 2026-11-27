@@ -4,6 +4,7 @@ Material de apoio ao relatório do Projeto Aplicado III (SENAI/SC – Fraiburgo)
 
 | Documento | Conteúdo |
 |-----------|----------|
+| **[Relatório do sistema](relatorio/relatorio.md)** | Relatório completo em um só documento (identificação, problema, solução, comercial, requisitos, casos de uso, arquitetura, banco, segurança, telas, usabilidade, API, implantação, testes, conclusão). Versão Word: [`Relatorio-SmartStock.docx`](relatorio/Relatorio-SmartStock.docx) |
 | [Descrição comercial](descricao-comercial.md) | Problema, solução, público, benefícios, diferenciais e modelo de oferta |
 | [Requisitos](requisitos.md) | Requisitos funcionais (RF) e não funcionais (RNF), com onde cada um está no código |
 | [Casos de uso](casos-de-uso.md) | Atores, diagrama de casos de uso e descrição dos principais casos |

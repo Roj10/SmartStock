@@ -20,6 +20,7 @@ planilhas, cadernos e mensagens soltas por um sistema web único, usado pelo nav
 |-|-|
 | **Sistema no ar** | <http://34.199.252.233> — AWS EC2 (AWS Academy), disponível enquanto o laboratório estiver ligado |
 | **Documentação da API** | [docs/openapi](docs/openapi/README.md) (OpenAPI 3: referência, `openapi.yaml`/`.json`, página Swagger) · no sistema: `/swagger-ui.html` |
+| **Relatório do sistema** | [docs/relatorio](docs/relatorio/relatorio.md) (Markdown) · [Word (.docx)](docs/relatorio/Relatorio-SmartStock.docx) |
 | **Relatório técnico** | [docs/](docs/README.md) — requisitos, casos de uso, diagramas, descrição comercial, implantação |
 
 ## Por que o SmartStock
