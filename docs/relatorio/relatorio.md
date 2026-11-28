@@ -37,6 +37,23 @@ O **SmartStock** é um sistema web desenvolvido no Projeto Aplicado III para a *
 
 **Palavras-chave:** gestão de estoque; ordem de produção; metalúrgica; Spring Boot; React; AWS; autenticação em dois fatores.
 
+## Critérios de avaliação {.unnumbered}
+
+Relatório e vídeo – Entrega Final do Projeto Aplicado III. O quadro indica onde cada critério de avaliação é atendido.
+
+*Tabela 2 – Onde cada critério de avaliação é atendido*
+
+| Critério de avaliação | Onde está neste relatório | Situação |
+|------------------------------|-------------------------------------------------------|---------------|
+| 1 – Vídeo de demonstração | Link na tabela de identificação (folha de rosto) | (inserir link) |
+| 2 – Descrição do problema | 1.1 Contextualização e 1.2 Problema | Atende |
+| 2 – Proposta de solução (com prints das telas) | 2.2 Proposta de solução (Figuras 1 a 4) e capítulo 8, com todas as telas | Atende |
+| 2 – Descritivo comercial (objetivo e desafio solucionado) | 2.8 Descritivo comercial: produto, objetivo, desafio solucionado, benefícios, diferenciais, planos e comparação | Atende |
+| 2 – Requisitos funcionais e não funcionais | 3.1 Requisitos funcionais, 3.2 Requisitos não funcionais e 3.3 Regras de negócio | Atende |
+| 2 – Casos de uso e diagramas | 3.4 Casos de uso; capítulo 4 (arquitetura, camadas, classes, atividades, sequência, estados); 7.2 Modelo ER | Atende |
+| 2 – Infraestrutura em nuvem utilizada | Capítulo 10 – Infraestrutura em nuvem (AWS EC2, Supabase, Gmail) | Atende |
+| 2 – Código da aplicação (GitHub) | 6.10 Código da aplicação – <https://github.com/Roj10/SmartStock> | Atende |
+
 # 1. Introdução
 
 ## 1.1 Contextualização
@@ -111,9 +128,42 @@ Pronto para entrega*; ao **enviar o pedido**, os materiais são baixados do esto
 **calendário** até ser marcado como entregue. As compras entram pelas **movimentações**, e o **painel** avisa quando um
 item chega ao estoque mínimo.
 
-## 2.2 Principais funcionalidades
+## 2.2 Proposta de solução
 
-*Tabela 2 – Módulos do SmartStock*
+A proposta é reunir num único sistema web, acessado pelo navegador do computador ou do celular, tudo o que hoje fica
+espalhado em planilhas, cadernos e mensagens, ligando o estoque à produção:
+
+1. **Estoque com alerta:** cada material tem estoque mínimo; ao chegar nele, o item aparece em vermelho no Painel
+   (Figura 1), antes que falte na produção.
+2. **Pedido vira ordem de produção:** o pedido do cliente é cadastrado como um projeto com checklist, materiais e
+   desenhos, e anda pelas colunas do quadro de Progresso até ficar pronto (Figura 2).
+3. **Baixa automática do estoque:** ao enviar o pedido, o sistema confere se há todos os materiais e baixa tudo de uma
+   vez; se faltar algo, mostra o que falta e não baixa nada (Figura 3).
+4. **Prazos à vista:** os pedidos enviados vão para o Calendário de entregas, com os atrasados destacados (Figura 4).
+5. **Custos e segurança:** o Financeiro calcula o custo pelo menor preço dos fornecedores, e cada setor só vê o que
+   precisa, com login protegido por código no e-mail.
+
+As telas abaixo mostram o caminho principal; todas as telas estão descritas no capítulo 8.
+
+![Figura 1 – Painel com os alertas de estoque mínimo](../telas/04-painel.png)
+
+*Figura 1 – Painel com os alertas de estoque mínimo. Fonte: o autor (2026).*
+
+![Figura 2 – Quadro de Progresso: o pedido como ordem de produção](../telas/10-progresso.png)
+
+*Figura 2 – Quadro de Progresso: o pedido como ordem de produção. Fonte: o autor (2026).*
+
+![Figura 3 – Envio do pedido com baixa automática dos materiais](../telas/13-enviar-pedido.png)
+
+*Figura 3 – Envio do pedido com baixa automática dos materiais. Fonte: o autor (2026).*
+
+![Figura 4 – Calendário de entregas com os pedidos atrasados destacados](../telas/14-calendario.png)
+
+*Figura 4 – Calendário de entregas com os pedidos atrasados destacados. Fonte: o autor (2026).*
+
+## 2.3 Principais funcionalidades
+
+*Tabela 3 – Módulos do SmartStock*
 
 | Módulo | O que resolve |
 |----------------------|------------------------------------------------------------------------------|
@@ -126,9 +176,9 @@ item chega ao estoque mínimo.
 | **Mensagens** | Conversa interna entre os setores, com envio de imagens |
 | **Usuários e segurança** | Uma conta por setor, cada uma só com as abas que precisa; login com código enviado por e-mail (2FA), sem instalar nada |
 
-## 2.3 Tipos de usuários
+## 2.4 Tipos de usuários
 
-*Tabela 3 – Tipos de usuários (atores)*
+*Tabela 4 – Tipos de usuários (atores)*
 
 | Ator | Quem é | O que pode fazer |
 |------------------|--------------------------------|--------------------------------------------------|
@@ -141,7 +191,7 @@ As abas que podem ser liberadas para cada conta são: **Estoque**, **Movimentaç
 calendário), **Fornecedores**, **Financeiro** e **Usuários**. O Painel e as Mensagens ficam disponíveis para todas as
 contas.
 
-## 2.4 Regras gerais de funcionamento
+## 2.5 Regras gerais de funcionamento
 
 - Todo acesso exige usuário, senha e um código de 6 dígitos enviado ao e-mail da conta (verificação em duas etapas).
 - Cada conta só vê e só usa as abas liberadas para ela; a permissão é conferida no servidor em cada operação.
@@ -153,9 +203,9 @@ contas.
 
 As regras de negócio completas estão na seção 3.3.
 
-## 2.5 Escopo do projeto
+## 2.6 Escopo do projeto
 
-*Tabela 4 – Escopo do projeto*
+*Tabela 5 – Escopo do projeto*
 
 | Está incluído | Não está incluído (fora do escopo desta versão) |
 |--------------------------------------------------|--------------------------------------------------|
@@ -169,7 +219,7 @@ As regras de negócio completas estão na seção 3.3.
 | Contas por setor, 2FA por e-mail, auditoria de segurança | Login com Google/Microsoft (SSO) |
 | Publicação na AWS com banco e arquivos no Supabase | Aplicativo nativo para Android/iOS (o sistema é responsivo) |
 
-## 2.6 Limitações conhecidas
+## 2.7 Limitações conhecidas
 
 - O endereço público usa **HTTP** (porta 80): o HTTPS já está preparado no Nginx e no script de instalação, mas depende
   de um domínio próprio para emitir o certificado.
@@ -180,7 +230,31 @@ As regras de negócio completas estão na seção 3.3.
 - Não há leitura de código de barras nem integração com nota fiscal.
 - O envio do código de login depende do Gmail; se o serviço de e-mail estiver fora, o login fica impedido até ele voltar.
 
-## 2.7 Descritivo comercial
+## 2.8 Descritivo comercial
+
+**Produto.** SmartStock – sistema web de gestão de estoque, produção sob encomenda e entregas para metalúrgicas,
+serralherias e pequenas indústrias de transformação, oferecido por assinatura mensal (SaaS), sem instalação e sem
+servidor na empresa.
+
+**Objetivo do produto.** Garantir que a produção nunca pare por falta de material e que todo pedido seja entregue no
+prazo, dando ao dono da empresa e a cada setor uma visão única e confiável do estoque, das ordens de produção, das
+entregas e dos custos.
+
+**Desafio solucionado.** A DDA Metalúrgica controlava tudo em planilhas, cadernos e WhatsApp. O quadro a seguir mostra
+cada dificuldade apresentada no desafio e como o SmartStock a resolve.
+
+*Tabela 6 – Desafio da DDA Metalúrgica e solução entregue*
+
+| Dificuldade da empresa | Como o SmartStock resolve |
+|---------------------------------------------|-------------------------------------------------------|
+| Material acabava no meio da produção, sem aviso | Estoque mínimo por item e alertas automáticos no Painel |
+| Ninguém sabia quem tirou o material nem quando | Movimentações permanentes, com data, fornecedor e responsável |
+| Andamento dos pedidos só se sabia perguntando na oficina | Quadro de Progresso com etapas e checklist de cada projeto |
+| Material do pedido baixado à mão, com erros | Baixa automática "tudo ou nada" ao enviar o pedido |
+| Prazos de entrega esquecidos | Calendário de entregas com atrasos destacados |
+| Desenhos e fotos espalhados no celular e no e-mail | Arquivos (PDF, CAD, imagens) guardados dentro de cada projeto |
+| Compras sem comparar fornecedores e custo desconhecido | Preço por fornecedor e custo do projeto pelo menor preço |
+| Informações da empresa sem proteção | Contas por setor, código no e-mail a cada login e registro de segurança |
 
 **Benefícios**
 
@@ -202,7 +276,7 @@ As regras de negócio completas estão na seção 3.3.
 
 **Modelo de oferta (proposta)**
 
-*Tabela 5 – Planos de oferta*
+*Tabela 7 – Planos de oferta*
 
 | Plano | Para quem | Inclui |
 |------------------|----------------------|------------------------------------------------------------|
@@ -215,7 +289,7 @@ AWS e no plano gratuito/básico do Supabase.
 
 **Comparação com as alternativas**
 
-*Tabela 6 – SmartStock comparado a planilhas e a ERPs genéricos*
+*Tabela 8 – SmartStock comparado a planilhas e a ERPs genéricos*
 
 | Critério | Planilhas / caderno | ERP genérico | **SmartStock** |
 |----------------------------------|------------------|------------------|------------------------------|
@@ -237,7 +311,7 @@ o desenvolvimento. Legenda de prioridade: **Alta** (essencial para o uso), **Mé
 
 ## 3.1 Requisitos funcionais (RF)
 
-*Tabela 7 – Requisitos funcionais – acesso e usuários*
+*Tabela 9 – Requisitos funcionais – acesso e usuários*
 
 | Id | Requisito | Prioridade | Onde |
 |------|----------------------------------------------------|---------|---------------------------------|
@@ -250,7 +324,7 @@ o desenvolvimento. Legenda de prioridade: **Alta** (essencial para o uso), **Mé
 | RF07 | O usuário deve poder sair do sistema, encerrando todas as sessões abertas da conta. | Média | `AuthController` (`/sair`) |
 | RF08 | O sistema deve registrar os eventos de segurança (logins, falhas, bloqueios, 2FA, troca de senha) e mostrá-los ao administrador. | Média | `service/AuditoriaService`, `controller/SegurancaController` |
 
-*Tabela 8 – Requisitos funcionais – estoque*
+*Tabela 10 – Requisitos funcionais – estoque*
 
 | Id | Requisito | Prioridade | Onde |
 |------|----------------------------------------------------|---------|---------------------------------|
@@ -261,14 +335,14 @@ o desenvolvimento. Legenda de prioridade: **Alta** (essencial para o uso), **Mé
 | RF13 | Manter o histórico de movimentações com data, tipo, quantidade, item, fornecedor e usuário responsável, com filtro por item. | Alta | `pages/Movimentacoes.jsx` |
 | RF14 | Impedir a exclusão de itens e fornecedores que já estão em uso (movimentações, projetos), avisando o motivo. | Média | `exception/GlobalExceptionHandler` (409) |
 
-*Tabela 9 – Requisitos funcionais – fornecedores*
+*Tabela 11 – Requisitos funcionais – fornecedores*
 
 | Id | Requisito | Prioridade | Onde |
 |------|----------------------------------------------------|---------|---------------------------------|
 | RF15 | Cadastrar, consultar, editar e excluir fornecedores/fabricantes com contato, telefone e e-mail. | Alta | `controller/FornecedorController` |
 | RF16 | Registrar quais itens cada fornecedor vende e por qual preço. | Média | `FornecedorController` (`/produtos`) |
 
-*Tabela 10 – Requisitos funcionais – produção (progresso) e entregas (calendário)*
+*Tabela 12 – Requisitos funcionais – produção (progresso) e entregas (calendário)*
 
 | Id | Requisito | Prioridade | Onde |
 |------|----------------------------------------------------|---------|---------------------------------|
@@ -281,7 +355,7 @@ o desenvolvimento. Legenda de prioridade: **Alta** (essencial para o uso), **Mé
 | RF23 | Mostrar os pedidos enviados em um calendário, permitir alterar data e meta, e marcar como entregue. | Alta | `pages/Calendario.jsx` |
 | RF24 | Salvar e reaproveitar modelos de projeto (checklist e materiais), e repetir um projeto existente com seus arquivos. | Média | `controller/ModeloProjetoController` |
 
-*Tabela 11 – Requisitos funcionais – financeiro*
+*Tabela 13 – Requisitos funcionais – financeiro*
 
 | Id | Requisito | Prioridade | Onde |
 |------|----------------------------------------------------|---------|---------------------------------|
@@ -289,7 +363,7 @@ o desenvolvimento. Legenda de prioridade: **Alta** (essencial para o uso), **Mé
 | RF26 | Cadastrar planos (orçamentos) para clientes, editá-los, fechá-los como venda e excluí-los. | Média | `controller/VendaController` |
 | RF27 | Mostrar resumo financeiro: total em estoque, vendas, planos em aberto e margem dos projetos. | Média | `pages/Financeiro.jsx` |
 
-*Tabela 12 – Requisitos funcionais – comunicação e painel*
+*Tabela 14 – Requisitos funcionais – comunicação e painel*
 
 | Id | Requisito | Prioridade | Onde |
 |------|----------------------------------------------------|---------|---------------------------------|
@@ -298,7 +372,7 @@ o desenvolvimento. Legenda de prioridade: **Alta** (essencial para o uso), **Mé
 
 ## 3.2 Requisitos não funcionais (RNF)
 
-*Tabela 13 – Requisitos não funcionais*
+*Tabela 15 – Requisitos não funcionais*
 
 | Id | Categoria | Requisito | Como foi atendido |
 |-------|-------------|----------------------------------------------|----------------------------------|
@@ -329,7 +403,7 @@ As regras de negócio ficam no **backend** (camada *service*), e não só nas te
 diretamente, a regra continua valendo. Quando uma regra é violada, a API responde `422` com uma mensagem em português
 que explica o que fazer.
 
-*Tabela 14 – Regras de negócio*
+*Tabela 16 – Regras de negócio*
 
 | Id | Regra | Onde é aplicada |
 |------|----------------------------------------------------------------|------------------------------|
@@ -359,9 +433,9 @@ que explica o que fazer.
 O diagrama mostra os atores e os principais casos de uso. O Operador só vê os casos de uso das abas liberadas para a
 conta dele (por exemplo, o almoxarifado vê UC04 e UC05).
 
-![Figura 1 – Diagrama de casos de uso](img/casos-de-uso.png)
+![Figura 5 – Diagrama de casos de uso](img/casos-de-uso.png)
 
-*Figura 1 – Diagrama de casos de uso. Fonte: o autor (2026).*
+*Figura 5 – Diagrama de casos de uso. Fonte: o autor (2026).*
 
 ### UC01 – Entrar com senha e 2FA
 
@@ -447,9 +521,9 @@ O SmartStock segue a arquitetura **cliente-servidor** em três partes: o **front
 guardam os dados (PostgreSQL no Supabase), os arquivos (Supabase Storage) e enviam o código de login (Gmail). No
 servidor da AWS, o Nginx entrega as telas e repassa à API apenas os pedidos `/api`.
 
-![Figura 2 – Arquitetura geral do SmartStock](img/arquitetura.png)
+![Figura 6 – Arquitetura geral do SmartStock](img/arquitetura.png)
 
-*Figura 2 – Arquitetura geral do SmartStock. Fonte: o autor (2026).*
+*Figura 6 – Arquitetura geral do SmartStock. Fonte: o autor (2026).*
 
 ## 4.2 Camadas do backend
 
@@ -457,9 +531,9 @@ Cada pedido percorre as camadas de cima para baixo, e cada camada tem uma única
 segurança** confere o token; o **controller** recebe o pedido e confere a permissão da aba; o **service** aplica as
 regras de negócio; o **repository** lê e grava no banco por meio das **entidades** (JPA).
 
-![Figura 3 – Camadas do backend](img/camadas.png)
+![Figura 7 – Camadas do backend](img/camadas.png)
 
-*Figura 3 – Camadas do backend. Fonte: o autor (2026).*
+*Figura 7 – Camadas do backend. Fonte: o autor (2026).*
 
 ## 4.3 Diagrama de classes
 
@@ -467,34 +541,34 @@ O diagrama mostra as principais classes de domínio (entidades JPA, pacote `mode
 relacionamentos. A composição (losango preto) indica as partes que só existem dentro de um projeto: checklist,
 materiais e arquivos.
 
-![Figura 4 – Diagrama de classes do domínio](img/classes.png)
+![Figura 8 – Diagrama de classes do domínio](img/classes.png)
 
-*Figura 4 – Diagrama de classes do domínio. Fonte: o autor (2026).*
+*Figura 8 – Diagrama de classes do domínio. Fonte: o autor (2026).*
 
 ## 4.4 Diagrama de atividades
 
 O processo central da metalúrgica, do pedido do cliente à entrega, com a decisão de estoque que garante a regra "tudo ou
 nada" no envio do pedido.
 
-![Figura 5 – Diagrama de atividades: do pedido à entrega](img/atividades.png)
+![Figura 9 – Diagrama de atividades: do pedido à entrega](img/atividades.png)
 
-*Figura 5 – Diagrama de atividades: do pedido à entrega. Fonte: o autor (2026).*
+*Figura 9 – Diagrama de atividades: do pedido à entrega. Fonte: o autor (2026).*
 
 ## 4.5 Diagrama de sequência do login com 2FA por e-mail
 
-![Figura 6 – Diagrama de sequência do login com verificação em duas etapas](img/login-2fa.png)
+![Figura 10 – Diagrama de sequência do login com verificação em duas etapas](img/login-2fa.png)
 
-*Figura 6 – Diagrama de sequência do login com verificação em duas etapas. Fonte: o autor (2026).*
+*Figura 10 – Diagrama de sequência do login com verificação em duas etapas. Fonte: o autor (2026).*
 
 ## 4.6 Diagrama de estados de um projeto
 
-![Figura 7 – Diagrama de estados de um projeto (ordem de produção)](img/estados-projeto.png)
+![Figura 11 – Diagrama de estados de um projeto (ordem de produção)](img/estados-projeto.png)
 
-*Figura 7 – Diagrama de estados de um projeto (ordem de produção). Fonte: o autor (2026).*
+*Figura 11 – Diagrama de estados de um projeto (ordem de produção). Fonte: o autor (2026).*
 
 # 5. Tecnologias e ferramentas utilizadas
 
-*Tabela 15 – Tecnologias utilizadas e sua finalidade*
+*Tabela 17 – Tecnologias utilizadas e sua finalidade*
 
 | Tecnologia | Finalidade |
 |------------------------------|----------------------------------------------------------------------|
@@ -520,7 +594,7 @@ nada" no envio do pedido.
 
 ## 5.1 Ambiente de desenvolvimento
 
-*Tabela 16 – Ambiente de desenvolvimento*
+*Tabela 18 – Ambiente de desenvolvimento*
 
 | Item | Utilizado |
 |----------------------|------------------------------------------------------------------------------|
@@ -685,7 +759,7 @@ só no log do servidor. No frontend, a mensagem do servidor é mostrada ao usuá
 
 ## 6.8 Segurança da aplicação
 
-A segurança foi tratada como requisito desde o início (RNF01 a RNF10) e está detalhada na seção 10. Em resumo: senhas
+A segurança foi tratada como requisito desde o início (RNF01 a RNF10) e está detalhada na seção 11. Em resumo: senhas
 com BCrypt, 2FA obrigatório por e-mail, JWT revogável, permissões por aba em cada rota, limite de tentativas, auditoria,
 cabeçalhos de segurança, CORS restrito, TLS até o banco, arquivos privados e nenhum segredo no código.
 
@@ -696,9 +770,38 @@ reais. A documentação interativa fica no próprio sistema (`/swagger-ui.html`)
 repositório, em `docs/openapi` (`openapi.yaml`, `openapi.json` e referência em texto). O Apêndice B traz o resumo das
 rotas por módulo.
 
-![Figura 8 – Documentação interativa da API (OpenAPI/Swagger)](../telas/18-swagger.png)
+![Figura 12 – Documentação interativa da API (OpenAPI/Swagger)](../telas/18-swagger.png)
 
-*Figura 8 – Documentação interativa da API (OpenAPI/Swagger). Fonte: o autor (2026).*
+*Figura 12 – Documentação interativa da API (OpenAPI/Swagger). Fonte: o autor (2026).*
+
+## 6.10 Código da aplicação (GitHub)
+
+Todo o código-fonte do SmartStock (backend, frontend, migrations, scripts de publicação e documentação) está no GitHub:
+
+*Tabela 19 – Repositório do código-fonte*
+
+| Item | Descrição |
+|------------------------|----------------------------------------------------------------------------|
+| **Repositório** | <https://github.com/Roj10/SmartStock> |
+| **Branches** | `main` (desenvolvimento) e `entrega` (versão entregue para avaliação) |
+| **Backend** | `backend/` – Java 21 + Spring Boot (código em `src/main/java/com/smartstock/backend`) |
+| **Frontend** | `frontend/` – React + Vite (código em `src/`) |
+| **Banco de dados** | `backend/src/main/resources/db/migration` – migrations Flyway (V1, V2, V3) |
+| **Publicação na AWS** | `deploy/` – instalação da EC2, Nginx, serviço systemd e script de publicação |
+| **Documentação** | `README.md` e `docs/` – este relatório, OpenAPI, diagramas, telas e usabilidade |
+
+Para rodar no próprio computador (Java 21, Node.js 20.19+ e Git), o `README.md` traz o passo a passo completo. Em resumo:
+
+```powershell
+git clone https://github.com/Roj10/SmartStock.git
+cd SmartStock
+copy backend\.env.example backend\.env     # preencher banco, Supabase e e-mail
+cd backend;  .\mvnw.cmd clean package -DskipTests;  java -jar target\backend-0.0.1-SNAPSHOT.jar
+cd ..\frontend;  npm install;  npm run dev      # abrir http://localhost:5173
+```
+
+Para só experimentar, sem `.env`, o backend roda com banco em memória: `java -jar target\backend-0.0.1-SNAPSHOT.jar
+--spring.profiles.active=h2`.
 
 # 7. Banco de dados
 
@@ -719,21 +822,21 @@ mostra esse modelo.
 
 Para facilitar a leitura, o modelo entidade-relacionamento está dividido por assunto.
 
-![Figura 9 – Modelo ER – estoque, fornecedores e movimentações](img/banco-estoque.png)
+![Figura 13 – Modelo ER – estoque, fornecedores e movimentações](img/banco-estoque.png)
 
-*Figura 9 – Modelo ER – estoque, fornecedores e movimentações. Fonte: o autor (2026).*
+*Figura 13 – Modelo ER – estoque, fornecedores e movimentações. Fonte: o autor (2026).*
 
-![Figura 10 – Modelo ER – projetos (ordens de produção) e vendas](img/banco-projetos.png)
+![Figura 14 – Modelo ER – projetos (ordens de produção) e vendas](img/banco-projetos.png)
 
-*Figura 10 – Modelo ER – projetos (ordens de produção) e vendas. Fonte: o autor (2026).*
+*Figura 14 – Modelo ER – projetos (ordens de produção) e vendas. Fonte: o autor (2026).*
 
-![Figura 11 – Modelo ER – modelos de projeto](img/banco-modelos.png)
+![Figura 15 – Modelo ER – modelos de projeto](img/banco-modelos.png)
 
-*Figura 11 – Modelo ER – modelos de projeto. Fonte: o autor (2026).*
+*Figura 15 – Modelo ER – modelos de projeto. Fonte: o autor (2026).*
 
-![Figura 12 – Modelo ER – contas, permissões, mensagens e auditoria](img/banco-contas.png)
+![Figura 16 – Modelo ER – contas, permissões, mensagens e auditoria](img/banco-contas.png)
 
-*Figura 12 – Modelo ER – contas, permissões, mensagens e auditoria. Fonte: o autor (2026).*
+*Figura 16 – Modelo ER – contas, permissões, mensagens e auditoria. Fonte: o autor (2026).*
 
 ## 7.3 Modelo físico: tabelas, atributos e chaves
 
@@ -741,7 +844,7 @@ Todas as tabelas usam chave primária `id` do tipo `bigint` gerada pelo banco (`
 as tabelas de ligação, cuja chave é composta. As chaves estrangeiras garantem que não exista, por exemplo, movimentação
 de um item inexistente.
 
-*Tabela 17 – Tabelas do banco de dados*
+*Tabela 20 – Tabelas do banco de dados*
 
 | Tabela | Finalidade | Colunas | Chave primária | Chaves estrangeiras |
 |----------------|--------------------|------------------------------------------|---------|-------------|
@@ -828,9 +931,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.1 Login – usuário e senha
 
-![Figura 13 – Login – usuário e senha](../telas/01-login.png)
+![Figura 17 – Login – usuário e senha](../telas/01-login.png)
 
-*Figura 13 – Login – usuário e senha. Fonte: o autor (2026).*
+*Figura 17 – Login – usuário e senha. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -841,9 +944,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.2 Login – código do e-mail (2FA)
 
-![Figura 14 – Login – código do e-mail (2FA)](../telas/02-codigo-email.png)
+![Figura 18 – Login – código do e-mail (2FA)](../telas/02-codigo-email.png)
 
-*Figura 14 – Login – código do e-mail (2FA). Fonte: o autor (2026).*
+*Figura 18 – Login – código do e-mail (2FA). Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -854,9 +957,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.3 E-mail com o código
 
-![Figura 15 – E-mail com o código](../telas/03-email-recebido.png)
+![Figura 19 – E-mail com o código](../telas/03-email-recebido.png)
 
-*Figura 15 – E-mail com o código. Fonte: o autor (2026).*
+*Figura 19 – E-mail com o código. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -867,9 +970,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.4 Painel
 
-![Figura 16 – Painel](../telas/04-painel.png)
+![Figura 20 – Painel](../telas/04-painel.png)
 
-*Figura 16 – Painel. Fonte: o autor (2026).*
+*Figura 20 – Painel. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -880,9 +983,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.5 Estoque (itens)
 
-![Figura 17 – Estoque (itens)](../telas/05-estoque.png)
+![Figura 21 – Estoque (itens)](../telas/05-estoque.png)
 
-*Figura 17 – Estoque (itens). Fonte: o autor (2026).*
+*Figura 21 – Estoque (itens). Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -893,9 +996,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.6 Novo item
 
-![Figura 18 – Novo item](../telas/06-novo-item.png)
+![Figura 22 – Novo item](../telas/06-novo-item.png)
 
-*Figura 18 – Novo item. Fonte: o autor (2026).*
+*Figura 22 – Novo item. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -906,9 +1009,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.7 Movimentações
 
-![Figura 19 – Movimentações](../telas/07-movimentacoes.png)
+![Figura 23 – Movimentações](../telas/07-movimentacoes.png)
 
-*Figura 19 – Movimentações. Fonte: o autor (2026).*
+*Figura 23 – Movimentações. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -919,9 +1022,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.8 Entrada em lote
 
-![Figura 20 – Entrada em lote](../telas/08-entrada-lote.png)
+![Figura 24 – Entrada em lote](../telas/08-entrada-lote.png)
 
-*Figura 20 – Entrada em lote. Fonte: o autor (2026).*
+*Figura 24 – Entrada em lote. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -932,9 +1035,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.9 Fornecedores
 
-![Figura 21 – Fornecedores](../telas/09-fornecedores.png)
+![Figura 25 – Fornecedores](../telas/09-fornecedores.png)
 
-*Figura 21 – Fornecedores. Fonte: o autor (2026).*
+*Figura 25 – Fornecedores. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -945,9 +1048,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.10 Progresso (quadro de produção)
 
-![Figura 22 – Progresso (quadro de produção)](../telas/10-progresso.png)
+![Figura 26 – Progresso (quadro de produção)](../telas/10-progresso.png)
 
-*Figura 22 – Progresso (quadro de produção). Fonte: o autor (2026).*
+*Figura 26 – Progresso (quadro de produção). Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -958,9 +1061,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.11 Novo projeto
 
-![Figura 23 – Novo projeto](../telas/11-novo-projeto.png)
+![Figura 27 – Novo projeto](../telas/11-novo-projeto.png)
 
-*Figura 23 – Novo projeto. Fonte: o autor (2026).*
+*Figura 27 – Novo projeto. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -971,9 +1074,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.12 Senha do administrador
 
-![Figura 24 – Senha do administrador](../telas/12-senha-admin.png)
+![Figura 28 – Senha do administrador](../telas/12-senha-admin.png)
 
-*Figura 24 – Senha do administrador. Fonte: o autor (2026).*
+*Figura 28 – Senha do administrador. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -984,9 +1087,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.13 Enviar pedido
 
-![Figura 25 – Enviar pedido](../telas/13-enviar-pedido.png)
+![Figura 29 – Enviar pedido](../telas/13-enviar-pedido.png)
 
-*Figura 25 – Enviar pedido. Fonte: o autor (2026).*
+*Figura 29 – Enviar pedido. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -997,9 +1100,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.14 Calendário de entregas
 
-![Figura 26 – Calendário de entregas](../telas/14-calendario.png)
+![Figura 30 – Calendário de entregas](../telas/14-calendario.png)
 
-*Figura 26 – Calendário de entregas. Fonte: o autor (2026).*
+*Figura 30 – Calendário de entregas. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -1010,9 +1113,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.15 Financeiro
 
-![Figura 27 – Financeiro](../telas/15-financeiro.png)
+![Figura 31 – Financeiro](../telas/15-financeiro.png)
 
-*Figura 27 – Financeiro. Fonte: o autor (2026).*
+*Figura 31 – Financeiro. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -1023,9 +1126,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.16 Mensagens
 
-![Figura 28 – Mensagens](../telas/16-mensagens.png)
+![Figura 32 – Mensagens](../telas/16-mensagens.png)
 
-*Figura 28 – Mensagens. Fonte: o autor (2026).*
+*Figura 32 – Mensagens. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -1036,9 +1139,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.17 Usuários e segurança
 
-![Figura 29 – Usuários e segurança](../telas/17-usuarios.png)
+![Figura 33 – Usuários e segurança](../telas/17-usuarios.png)
 
-*Figura 29 – Usuários e segurança. Fonte: o autor (2026).*
+*Figura 33 – Usuários e segurança. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -1049,9 +1152,9 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 ## 8.18 Uso no celular
 
-![Figura 30 – Uso no celular](../telas/21-celular.png)
+![Figura 34 – Uso no celular](../telas/21-celular.png)
 
-*Figura 30 – Uso no celular. Fonte: o autor (2026).*
+*Figura 34 – Uso no celular. Fonte: o autor (2026).*
 
 | Item | Descrição |
 |------------------------|----------------------------------------------------------------------------|
@@ -1064,7 +1167,7 @@ o login, e o botão *Sair* encerra a sessão. A seguir, cada tela com sua finali
 
 As telas foram avaliadas pelas **10 heurísticas de usabilidade de Nielsen**.
 
-*Tabela 18 – Avaliação pelas heurísticas de Nielsen*
+*Tabela 21 – Avaliação pelas heurísticas de Nielsen*
 
 | # | Heurística | Como o SmartStock atende |
 |----|------------------------------|------------------------------------------------------------------|
@@ -1086,7 +1189,7 @@ só de cores para indicar estados importantes.
 
 ## 9.1 Estratégia de testes
 
-*Tabela 19 – Estratégia de testes*
+*Tabela 22 – Estratégia de testes*
 
 | Tipo | O que foi feito | Situação |
 |------------------|----------------------------------------------------------------|------------------|
@@ -1103,7 +1206,7 @@ só de cores para indicar estados importantes.
 Os testes foram executados em novembro de 2026 com o backend local (perfil de testes, banco H2 e as mesmas migrations do
 PostgreSQL), por um script que chama a API exatamente como o frontend. **Resultado: 37 de 37 testes aprovados.**
 
-*Tabela 20 – Casos de teste funcionais e resultados*
+*Tabela 23 – Casos de teste funcionais e resultados*
 
 | Nº | Módulo | Teste | Resultado esperado | Resultado obtido | Situação |
 |----|----------|------------------------|----------------------|------------------------------|----------|
@@ -1145,11 +1248,91 @@ PostgreSQL), por um script que chama a API exatamente como o frontend. **Resulta
 | 36 | Contas | Registro de eventos de segurança | Registrar falhas, bloqueios e 2FA | 200 – 21 eventos registrados | Aprovado |
 | 37 | Contas | Sair do sistema | O token antigo deixa de valer | 200 ao sair; depois 401 | Aprovado |
 
-# 10. Segurança e manutenção
+# 10. Infraestrutura em nuvem
 
-## 10.1 Medidas de segurança
+O SmartStock roda inteiramente na nuvem, sem nenhum servidor na empresa: o sistema (telas e API) fica numa máquina
+virtual da **AWS** (Amazon EC2), o banco de dados e os arquivos ficam no **Supabase**, e o código de login é enviado
+pelo **Gmail**. O usuário só precisa de um navegador e de internet.
 
-*Tabela 21 – Medidas de segurança por camada*
+## 10.1 Visão geral
+
+*Tabela 24 – Serviços de nuvem utilizados*
+
+| Serviço | Provedor | Função no SmartStock | Plano usado |
+|--------------------|-----------|---------------------------------------------|------------------------|
+| **Amazon EC2** (máquina virtual) | AWS | Hospeda o Nginx (telas) e o backend Spring Boot (API) | AWS Academy Learner Lab (créditos acadêmicos) |
+| **Elastic IP** | AWS | Endereço público fixo do sistema: 34.199.252.233 | Incluído no laboratório |
+| **Security Group** | AWS | Firewall da instância: só as portas 22 (restrita) e 80 | Incluído |
+| **PostgreSQL** | Supabase | Banco de dados relacional (schema `smartstock`) | Gratuito |
+| **Storage** | Supabase | Fotos dos itens, imagens das mensagens e arquivos dos projetos | Gratuito |
+| **SMTP** | Gmail | Envio do código de verificação em duas etapas | Gratuito (senha de app) |
+| **GitHub** | GitHub | Repositório do código e da documentação | Gratuito |
+
+![Figura 35 – Diagrama de implantação na nuvem](img/implantacao.png)
+
+*Figura 35 – Diagrama de implantação na nuvem. Fonte: o autor (2026).*
+
+O caminho de um acesso é: o navegador chama `http://34.199.252.233`; o **Nginx** da EC2 entrega as telas (arquivos do
+React) e repassa as chamadas `/api` ao **backend**, que só escuta dentro da própria máquina; o backend consulta o
+**PostgreSQL** e o **Storage** do Supabase por conexões cifradas (TLS) e, no login, envia o código pelo **Gmail**.
+
+## 10.2 Servidor de aplicação (AWS EC2)
+
+*Tabela 25 – Configuração do servidor na AWS*
+
+| Item | Configuração |
+|--------------------|--------------------------------------------------------------------------------|
+| Instância | EC2 `t3.micro`, Ubuntu Server LTS, 20 GiB, região `us-east-1` (AWS Academy) |
+| Endereço | **Elastic IP 34.199.252.233** (fixo, não muda ao religar a instância) |
+| Servidor web | **Nginx** na porta 80: entrega as telas (build do React) e repassa `/api` e a documentação ao backend |
+| Backend | Serviço **systemd** `smartstock.service`: liga junto com o servidor e reinicia sozinho se cair; escuta só em `127.0.0.1:8080`, com usuário próprio sem acesso ao terminal |
+| Security Group | Entrada **22 (SSH) apenas do IP do administrador** e **80 (HTTP)** para todos; **8080 fechada**; a 443 só é aberta ao ativar o HTTPS |
+| Firewall do servidor | `ufw` liberando apenas OpenSSH e Nginx HTTP |
+| Acesso administrativo | SSH com **chave** (`.pem`), sem senha |
+| Banco e arquivos | Supabase (PostgreSQL com TLS verificando o certificado; RLS ligado; Storage privado para arquivos sensíveis) |
+
+![Figura 36 – Instância EC2 do SmartStock com o IP elástico](../telas/19-aws-ec2.png)
+
+*Figura 36 – Instância EC2 do SmartStock com o IP elástico. Fonte: o autor (2026).*
+
+![Figura 37 – Security Group com apenas as portas necessárias (22 restrita e 80)](../telas/20-security-group.png)
+
+*Figura 37 – Security Group com apenas as portas necessárias (22 restrita e 80). Fonte: o autor (2026).*
+
+## 10.3 Banco de dados e arquivos (Supabase)
+
+- **PostgreSQL gerenciado:** o Supabase cuida do servidor de banco, das atualizações e das cópias de segurança; o
+  SmartStock usa o schema `smartstock`, criado pelas migrations Flyway, e conecta com TLS verificando o certificado.
+- **Acesso fechado:** a API pública do Supabase não enxerga as tabelas (RLS ligado, sem regras de acesso); só o backend,
+  com a senha do banco, lê e grava.
+- **Storage:** as fotos dos itens ficam no *bucket* público `pastilhas` (só leitura); as imagens das mensagens e os
+  arquivos dos projetos ficam nos *buckets* **privados** `mensagens` e `projetos`, entregues apenas pelo backend a quem
+  tem permissão. Os *buckets* são criados sozinhos na primeira execução.
+
+## 10.4 Publicação e atualização
+
+A publicação foi automatizada pelo script `deploy/publicar.ps1`, executado no computador do desenvolvedor:
+
+1. gera o backend (`mvnw package`) e o frontend (`npm run build`), parando no primeiro erro;
+2. envia o `.jar` e os arquivos das telas à EC2 por `scp`, usando a chave `.pem`;
+3. reinicia o serviço `smartstock` (systemd) e recarrega o Nginx.
+
+A primeira instalação da máquina (Java, Nginx, usuário do serviço, firewall) é feita uma única vez pelo script
+`deploy/instalar-ec2.sh`. O passo a passo completo está em `docs/implantacao-aws-ec2.md`.
+
+## 10.5 Disponibilidade e custos
+
+- O backend roda como serviço **systemd**: sobe junto com a máquina e reinicia sozinho se cair.
+- O **Elastic IP** mantém o mesmo endereço quando a instância é desligada e religada.
+- No **AWS Academy**, o laboratório encerra a sessão depois de algumas horas e a instância fica parada até o próximo
+  início; numa conta AWS comercial, a mesma configuração (`t3.micro`, disco de 20 GiB e IP público) fica ligada continuamente,
+  com custo estimado em cerca de US$ 13 por mês sob demanda, e o Supabase e o Gmail continuam no plano gratuito para o porte da DDA Metalúrgica.
+
+# 11. Segurança e manutenção
+
+## 11.1 Medidas de segurança
+
+*Tabela 26 – Medidas de segurança por camada*
 
 | Camada | O que o SmartStock faz |
 |--------------------|--------------------------------------------------------------------------------|
@@ -1175,14 +1358,14 @@ PostgreSQL), por um script que chama a API exatamente como o frontend. **Resulta
   montado com texto vindo do usuário.
 - **Proteção do navegador:** CORS só para o endereço do sistema, cabeçalhos CSP, `X-Frame-Options` e `Referrer-Policy`.
 
-## 10.2 Backup do banco de dados
+## 11.2 Backup do banco de dados
 
 O banco fica no Supabase, que mantém cópias de segurança automáticas conforme o plano contratado. Como rotina da
 empresa, recomenda-se também um *backup* lógico semanal com `pg_dump` do schema `smartstock`, guardado fora do Supabase,
 e o *backup* dos buckets do Storage. Como o esquema é todo criado pelas migrations, um banco novo pode ser montado do zero
 apenas iniciando o backend e depois restaurando os dados.
 
-## 10.3 Atualizações e correções
+## 11.3 Atualizações e correções
 
 - **Código:** cada mudança é registrada no Git/GitHub; a publicação é feita pelo script `deploy/publicar.ps1`, que gera
   o backend e o frontend, envia ao servidor e reinicia o serviço, parando no primeiro erro.
@@ -1193,42 +1376,15 @@ apenas iniciando o backend e depois restaurando os dados.
 - **Segredos:** senhas e chaves ficam no arquivo `.env` do servidor (permissão 600, fora do Git) e podem ser trocadas sem
   mudar o código.
 
-## 10.4 Possibilidades de expansão
+## 11.4 Possibilidades de expansão
 
 A organização em camadas e a API REST documentada permitem acrescentar módulos sem mexer no que já funciona: um
 aplicativo móvel pode usar a mesma API; novos relatórios entram como novas rotas de consulta; e a mesma base pode
-atender outras metalúrgicas, separando os dados por empresa (modelo SaaS da seção 2.7).
+atender outras metalúrgicas, separando os dados por empresa (modelo SaaS da seção 2.8).
 
-## 10.5 Infraestrutura em nuvem
+# 12. Resultados alcançados
 
-*Tabela 22 – Configuração da infraestrutura*
-
-| Item | Configuração |
-|--------------------|--------------------------------------------------------------------------------|
-| Instância | EC2 `t3.micro`, Ubuntu Server LTS, 20 GiB, região `us-east-1` (AWS Academy) |
-| Endereço | **Elastic IP 34.199.252.233** (fixo, não muda ao religar a instância) |
-| Servidor web | **Nginx** na porta 80: entrega as telas (build do React) e repassa `/api` e a documentação ao backend |
-| Backend | Serviço **systemd** `smartstock.service`: liga junto com o servidor e reinicia sozinho se cair; escuta só em `127.0.0.1:8080`, com usuário próprio sem acesso ao terminal |
-| Security Group | Entrada **22 (SSH) apenas do IP do administrador** e **80 (HTTP)** para todos; **8080 fechada**; a 443 só é aberta ao ativar o HTTPS |
-| Firewall do servidor | `ufw` liberando apenas OpenSSH e Nginx HTTP |
-| Acesso administrativo | SSH com **chave** (`.pem`), sem senha |
-| Banco e arquivos | Supabase (PostgreSQL com TLS verificando o certificado; RLS ligado; Storage privado para arquivos sensíveis) |
-
-![Figura 31 – Diagrama de implantação](img/implantacao.png)
-
-*Figura 31 – Diagrama de implantação. Fonte: o autor (2026).*
-
-![Figura 32 – Instância EC2 do SmartStock com o IP elástico](../telas/19-aws-ec2.png)
-
-*Figura 32 – Instância EC2 do SmartStock com o IP elástico. Fonte: o autor (2026).*
-
-![Figura 33 – Security Group com apenas as portas necessárias (22 restrita e 80)](../telas/20-security-group.png)
-
-*Figura 33 – Security Group com apenas as portas necessárias (22 restrita e 80). Fonte: o autor (2026).*
-
-# 11. Resultados alcançados
-
-## 11.1 Funcionalidades implementadas
+## 12.1 Funcionalidades implementadas
 
 Todos os módulos planejados foram implementados e estão publicados em <http://34.199.252.233>: estoque com fotos e
 alertas, movimentações (inclusive em lote), fornecedores e preços, quadro de produção com checklist, materiais, arquivos
@@ -1236,9 +1392,9 @@ e modelos, calendário de entregas, financeiro (valor em estoque, custo, planos 
 com permissões por aba, verificação em duas etapas por e-mail e registro de eventos de segurança. A API tem 67 rotas
 documentadas em OpenAPI.
 
-## 11.2 Requisitos atendidos
+## 12.2 Requisitos atendidos
 
-*Tabela 23 – Situação dos requisitos*
+*Tabela 27 – Situação dos requisitos*
 
 | Grupo | Quantidade | Situação | Observação |
 |------------------------------|----------|----------------|--------------------------------------------|
@@ -1249,9 +1405,9 @@ documentadas em OpenAPI.
 | RNF11 a RNF17, RNF19, RNF20 | 9 | Atende | Rastreabilidade, transações, migrations, OpenAPI, REST, responsividade, systemd |
 | RNF18 – desempenho | 1 | Atende parcialmente | Respostas rápidas no uso, mas sem teste de carga formal |
 
-## 11.3 Problemas encontrados e soluções aplicadas
+## 12.3 Problemas encontrados e soluções aplicadas
 
-*Tabela 24 – Problemas encontrados e soluções*
+*Tabela 28 – Problemas encontrados e soluções*
 
 | Problema | Solução aplicada |
 |------------------------------------------|----------------------------------------------------------|
@@ -1262,13 +1418,13 @@ documentadas em OpenAPI.
 | A publicação parecia concluída mesmo quando o *build* do frontend falhava | O script `publicar.ps1` passou a parar no primeiro erro e a usar `npm install` |
 | Nomes de tabelas com maiúsculas diferentes entre H2 e PostgreSQL nos testes | Banco de testes configurado com `DATABASE_TO_LOWER=TRUE` |
 
-## 11.4 Resultados dos testes
+## 12.4 Resultados dos testes
 
 Dos 37 testes funcionais executados, **37 foram aprovados** (seção 9.2). Os testes confirmaram as regras mais
 críticas: bloqueio após tentativas erradas, código de uso único, permissões conferidas no servidor (403), recusa de
 saída maior que o estoque e envio de pedido "tudo ou nada".
 
-## 11.5 Funcionalidades que ainda precisam ser desenvolvidas
+## 12.5 Funcionalidades que ainda precisam ser desenvolvidas
 
 - HTTPS com domínio próprio;
 - testes unitários automatizados por classe e teste de carga;
@@ -1277,7 +1433,7 @@ saída maior que o estoque e envio de pedido "tudo ou nada".
 - separação dos dados por empresa, para oferecer o sistema como serviço (SaaS);
 - teste de usabilidade com os funcionários da DDA Metalúrgica.
 
-# 12. Conclusão
+# 13. Conclusão
 
 O SmartStock atendeu ao desafio proposto pela DDA Metalúrgica: o estoque passou a ter alertas e histórico completo, cada
 pedido é acompanhado como uma ordem de produção até a entrega, os materiais são baixados automaticamente e o custo dos
@@ -1289,7 +1445,7 @@ lugar confiável, o que reduz paradas de produção por falta de material, atras
 
 **Conhecimentos adquiridos.** O projeto colocou em prática conteúdos de várias unidades curriculares:
 
-*Tabela 25 – Conhecimentos aplicados*
+*Tabela 29 – Conhecimentos aplicados*
 
 | Unidade curricular | Onde aparece no SmartStock |
 |----------------------------|------------------------------------------------------------------------|
@@ -1305,7 +1461,7 @@ IP elástico, firewall e serviço do backend), o envio de e-mail com segurança 
 migração do banco para um modelo versionado sem perder os dados existentes.
 
 **Limitações atuais.** Endereço público ainda em HTTP, poucos testes unitários, dependência do laboratório do AWS
-Academy e do Gmail, e ausência de integração com nota fiscal (seção 2.6).
+Academy e do Gmail, e ausência de integração com nota fiscal (seção 2.7).
 
 **Melhorias futuras.** HTTPS com domínio próprio, relatórios de consumo, avisos automáticos de estoque mínimo, testes
 automatizados, separação por empresa (SaaS) e um aplicativo para o chão de fábrica.
@@ -1333,7 +1489,7 @@ automatizados, separação por empresa (SaaS) e um aplicativo para o chão de f�
 
 Scripts SQL produzidos pelo autor, em `backend/src/main/resources/db/migration`:
 
-*Tabela 26 – Migrations do banco de dados*
+*Tabela 30 – Migrations do banco de dados*
 
 | Arquivo | Conteúdo |
 |----------------------------|------------------------------------------------------------------------|
@@ -1343,7 +1499,7 @@ Scripts SQL produzidos pelo autor, em `backend/src/main/resources/db/migration`:
 
 ## Apêndice B – Resumo das rotas da API
 
-*Tabela 27 – Rotas da API por módulo*
+*Tabela 31 – Rotas da API por módulo*
 
 | Módulo | Rotas | Exemplos |
 |--------------------|--------|------------------------------------------------------------------------|
@@ -1365,7 +1521,7 @@ sistema, em `/swagger-ui.html`.
 
 ## Apêndice C – Documentos complementares no repositório
 
-*Tabela 28 – Documentos complementares*
+*Tabela 32 – Documentos complementares*
 
 | Documento | Conteúdo |
 |----------------------------|------------------------------------------------------------------------|
